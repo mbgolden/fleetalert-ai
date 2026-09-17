@@ -27,16 +27,20 @@ jobs:
     permissions:
       id-token: write # required to fetch the OIDC token for AssumeRoleWithWebIdentity
       contents: read
-    defaults:
-      run:
-        working-directory: infra/envs/demo
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - name: Build Lambda deployment package
+        run: bash infra/scripts/build_lambda_package.sh
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: us-east-1
       - uses: hashicorp/setup-terraform@v3
-      - run: terraform init
-      - run: terraform plan
+      - name: terraform init
+        working-directory: infra/envs/demo
+        run: terraform init
+      - name: terraform plan
+        working-directory: infra/envs/demo
+        run: terraform plan
         # terraform apply is a manual, gated step — never run automatically.

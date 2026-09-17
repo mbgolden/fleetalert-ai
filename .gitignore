@@ -6,15 +6,16 @@ __pycache__/
 .ruff_cache/
 .pytest_cache/
 *.egg-info/
+backend/build/
 
 # Terraform
 **/.terraform/
 *.tfstate
 *.tfstate.*
 *.tfplan
-.terraform.lock.hcl
 override.tf
 override.tf.json
+**/.build/
 
 # Frontend
 frontend/node_modules/
