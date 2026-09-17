@@ -99,6 +99,33 @@ def run_investigation(
     return _route_to_support(alert_id, reason="max_iterations_exceeded")
 
 
+def confirm_fix(alert_id: str, confirmation_token: str) -> dict[str, Any]:
+    """Validates a human's confirm action; does not execute anything.
+
+    Called by the (API Gateway) confirm handler before it calls
+    SendTaskSuccess to resume the Step Functions wait. execute_fix runs
+    later, asynchronously, once Step Functions resumes and reaches the
+    ExecuteFix state -- a real time gap, unlike the loop's own steps, so
+    "confirm" is logged here rather than bundled into execute_fix.
+    """
+    alert = repositories.get_alert(alert_id)
+    if alert is None:
+        raise ValueError(f"No such alert: {alert_id}")
+    if alert.get("status") != "awaiting_confirmation":
+        raise GuardrailViolation(f"Alert {alert_id} is not awaiting confirmation")
+    if alert.get("confirmation_token") != confirmation_token:
+        raise GuardrailViolation("Invalid confirmation token")
+
+    fix_id = alert["proposed_fix"]
+    repositories.append_audit_log(alert_id, actor="human", action="confirm", details={"fix_id": fix_id})
+    return {
+        "alert_id": alert_id,
+        "fix_id": fix_id,
+        "confirmation_token": confirmation_token,
+        "step_functions_task_token": alert.get("step_functions_task_token"),
+    }
+
+
 def execute_fix(alert_id: str, fix_id: str, confirmation_token: str) -> dict[str, Any]:
     """Only reachable with the token issued by _finalize_proposed_fix.
 
@@ -119,7 +146,6 @@ def execute_fix(alert_id: str, fix_id: str, confirmation_token: str) -> dict[str
     if not is_whitelisted(fix_id):
         raise GuardrailViolation(f"Fix type {fix_id!r} is not whitelisted")
 
-    repositories.append_audit_log(alert_id, actor="human", action="confirm", details={"fix_id": fix_id})
     repositories.append_audit_log(alert_id, actor="agent", action="execute_fix", details={"fix_id": fix_id})
     repositories.update_alert(alert_id, status="resolved")
     return {"outcome": "resolved", "alert_id": alert_id, "fix_id": fix_id}

@@ -1,7 +1,7 @@
 import pytest
 
 from fleetalert.agent.guardrails import GuardrailViolation
-from fleetalert.agent.loop import execute_fix, reject_fix, run_investigation
+from fleetalert.agent.loop import confirm_fix, execute_fix, reject_fix, run_investigation
 from fleetalert.repositories import (
     create_alert,
     get_alert,
@@ -136,7 +136,36 @@ def test_execute_fix_requires_matching_confirmation_token(dynamodb_tables: None)
     assert get_alert("ALERT-4")["status"] == "resolved"  # type: ignore[index]
 
     actions = [e["action"] for e in get_audit_trail("ALERT-4")]
-    assert actions[-2:] == ["confirm", "execute_fix"]
+    assert actions[-1] == "execute_fix"
+
+
+def test_confirm_fix_logs_human_action_without_executing(dynamodb_tables: None) -> None:
+    _seed(alert_id="ALERT-4B", machine_id="M-1002", alert_type="temperature_drift")
+    update_alert(
+        "ALERT-4B",
+        status="awaiting_confirmation",
+        proposed_fix="send_diagnostic_reset",
+        confirmation_token="correct-token",
+        step_functions_task_token="sfn-task-token",
+    )
+
+    with pytest.raises(GuardrailViolation, match="Invalid confirmation token"):
+        confirm_fix("ALERT-4B", "wrong-token")
+
+    result = confirm_fix("ALERT-4B", "correct-token")
+
+    assert result == {
+        "alert_id": "ALERT-4B",
+        "fix_id": "send_diagnostic_reset",
+        "confirmation_token": "correct-token",
+        "step_functions_task_token": "sfn-task-token",
+    }
+    # confirming does not execute anything -- status is unchanged
+    assert get_alert("ALERT-4B")["status"] == "awaiting_confirmation"  # type: ignore[index]
+
+    last_action = get_audit_trail("ALERT-4B")[-1]
+    assert last_action["actor"] == "human"
+    assert last_action["action"] == "confirm"
 
 
 def test_execute_fix_rejects_non_whitelisted_fix_as_defense_in_depth(dynamodb_tables: None) -> None:
