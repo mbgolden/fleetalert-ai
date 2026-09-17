@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 from boto3.dynamodb.conditions import Key
@@ -20,6 +21,22 @@ from fleetalert.db import (
     TELEMETRY_TABLE,
     get_dynamodb_resource,
 )
+
+
+def _dynamo_safe(value: Any) -> Any:
+    """Recursively convert float -> Decimal; DynamoDB has no float type.
+
+    Applied at the boundary just before put_item/update_item so callers
+    (e.g. the agent loop, which gets a plain float `confidence` straight
+    from the model's tool call) never have to think about this.
+    """
+    if isinstance(value, float):
+        return Decimal(str(value))
+    if isinstance(value, dict):
+        return {k: _dynamo_safe(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_dynamo_safe(v) for v in value]
+    return value
 
 
 def create_tables() -> None:
@@ -70,7 +87,7 @@ def create_tables() -> None:
 
 
 def put_machine(machine: dict[str, Any]) -> None:
-    get_dynamodb_resource().Table(MACHINES_TABLE).put_item(Item=machine)
+    get_dynamodb_resource().Table(MACHINES_TABLE).put_item(Item=_dynamo_safe(machine))
 
 
 def get_machine(machine_id: str) -> dict[str, Any] | None:
@@ -91,7 +108,9 @@ def put_telemetry_reading(
     machine_id: str, timestamp: str, signal_readings: dict[str, Any]
 ) -> None:
     get_dynamodb_resource().Table(TELEMETRY_TABLE).put_item(
-        Item={"machine_id": machine_id, "timestamp": timestamp, "signal_readings": signal_readings}
+        Item=_dynamo_safe(
+            {"machine_id": machine_id, "timestamp": timestamp, "signal_readings": signal_readings}
+        )
     )
 
 
@@ -106,7 +125,7 @@ def get_telemetry_snapshot(machine_id: str, start: str, end: str) -> list[dict[s
 
 
 def put_knowledge_base_entry(entry: dict[str, Any]) -> None:
-    get_dynamodb_resource().Table(KNOWLEDGE_BASE_TABLE).put_item(Item=entry)
+    get_dynamodb_resource().Table(KNOWLEDGE_BASE_TABLE).put_item(Item=_dynamo_safe(entry))
 
 
 def search_knowledge_base(machine_type: str, symptom_description: str) -> list[dict[str, Any]]:
@@ -134,7 +153,7 @@ def search_knowledge_base(machine_type: str, symptom_description: str) -> list[d
 
 
 def create_alert(alert: dict[str, Any]) -> None:
-    get_dynamodb_resource().Table(ALERTS_TABLE).put_item(Item=alert)
+    get_dynamodb_resource().Table(ALERTS_TABLE).put_item(Item=_dynamo_safe(alert))
 
 
 def get_alert(alert_id: str) -> dict[str, Any] | None:
@@ -152,7 +171,7 @@ def list_alerts() -> list[dict[str, Any]]:
 def update_alert(alert_id: str, **fields: Any) -> None:
     table = get_dynamodb_resource().Table(ALERTS_TABLE)
     expr_names = {f"#{k}": k for k in fields}
-    expr_values = {f":{k}": v for k, v in fields.items()}
+    expr_values = {f":{k}": _dynamo_safe(v) for k, v in fields.items()}
     update_expr = "SET " + ", ".join(f"#{k} = :{k}" for k in fields)
     table.update_item(
         Key={"alert_id": alert_id},
@@ -174,7 +193,7 @@ def append_audit_log(
         "action": action,
         "details": details,
     }
-    get_dynamodb_resource().Table(AUDIT_LOG_TABLE).put_item(Item=item)
+    get_dynamodb_resource().Table(AUDIT_LOG_TABLE).put_item(Item=_dynamo_safe(item))
     return item
 
 
