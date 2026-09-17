@@ -21,6 +21,7 @@ override.tf.json
 frontend/node_modules/
 frontend/dist/
 frontend/build/
+frontend/*.tsbuildinfo
 
 # Env / secrets
 .env
