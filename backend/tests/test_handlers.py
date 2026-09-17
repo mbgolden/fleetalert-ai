@@ -1,3 +1,5 @@
+import json
+
 import boto3
 import pytest
 
@@ -69,7 +71,10 @@ def test_agent_loop_handler_fetches_secret_and_runs_investigation(
     _seed_alert("ALERT-3")
 
     secretsmanager = boto3.client("secretsmanager", region_name="us-east-1")
-    secret = secretsmanager.create_secret(Name="fleetalert-anthropic-key", SecretString="sk-test-key")
+    secret = secretsmanager.create_secret(
+        Name="fleetalert-anthropic-key",
+        SecretString=json.dumps({"anthropic-api-key": "sk-test-key"}),
+    )
     monkeypatch.setenv("ANTHROPIC_SECRET_ARN", secret["ARN"])
 
     fake_client = FakeAnthropicClient(
@@ -99,11 +104,17 @@ def test_agent_loop_handler_caches_secret_across_invocations(
 ) -> None:
     agent_loop_handler._secret_cache.clear()
     secretsmanager = boto3.client("secretsmanager", region_name="us-east-1")
-    secret = secretsmanager.create_secret(Name="cache-test-key", SecretString="sk-cached")
+    secret = secretsmanager.create_secret(
+        Name="cache-test-key",
+        SecretString=json.dumps({"anthropic-api-key": "sk-cached"}),
+    )
     monkeypatch.setenv("ANTHROPIC_SECRET_ARN", secret["ARN"])
 
     first = agent_loop_handler._get_anthropic_api_key()
-    secretsmanager.update_secret(SecretId=secret["ARN"], SecretString="sk-changed-after-cache")
+    secretsmanager.update_secret(
+        SecretId=secret["ARN"],
+        SecretString=json.dumps({"anthropic-api-key": "sk-changed-after-cache"}),
+    )
     second = agent_loop_handler._get_anthropic_api_key()
 
     assert first == second == "sk-cached"

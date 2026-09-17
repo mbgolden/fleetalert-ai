@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from typing import Any
 
@@ -12,18 +13,23 @@ from fleetalert.agent.loop import run_investigation
 
 _secret_cache: dict[str, str] = {}
 
+# A JSON field name inside the secret, not a credential itself.
+_SECRET_KEY_NAME = "anthropic-api-key"  # nosec B105
+
 
 def _get_anthropic_api_key() -> str:
     """Cached across warm Lambda invocations, fetched fresh on cold start.
 
     The key itself never lives in a Lambda environment variable -- only the
-    secret's ARN does. See docs/decisions/ for why (never hardcode/plainly
-    expose the LLM API key).
+    secret's ARN does. Stored as a Secrets Manager key/value pair (key
+    "anthropic-api-key"), not plaintext, so SecretString is a JSON blob to
+    unwrap, not the raw key itself.
     """
     secret_arn = os.environ["ANTHROPIC_SECRET_ARN"]
     if secret_arn not in _secret_cache:
         client = boto3.client("secretsmanager")
-        _secret_cache[secret_arn] = client.get_secret_value(SecretId=secret_arn)["SecretString"]
+        secret_string = client.get_secret_value(SecretId=secret_arn)["SecretString"]
+        _secret_cache[secret_arn] = json.loads(secret_string)[_SECRET_KEY_NAME]
     return _secret_cache[secret_arn]
 
 
