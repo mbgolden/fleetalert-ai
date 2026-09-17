@@ -1,0 +1,28 @@
+name: Terraform Apply (demo)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    environment: aws-apply
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - name: Build Lambda deployment package
+        run: bash infra/scripts/build_lambda_package.sh
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_APPLY_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: hashicorp/setup-terraform@v3
+      - name: terraform init
+        working-directory: infra/envs/demo
+        run: terraform init
+      - name: terraform apply
+        working-directory: infra/envs/demo
+        run: terraform apply -auto-approve
