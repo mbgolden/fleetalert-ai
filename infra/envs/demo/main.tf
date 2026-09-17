@@ -12,8 +12,18 @@ terraform {
     }
   }
 
-  # Remote state (S3 backend + DynamoDB lock table) added once the AWS
-  # account and those resources actually exist — see infra/README.md.
+  # Bucket/table created once by infra/bootstrap -- see that config's
+  # header comment for why these names are hardcoded here rather than
+  # piped in from a data source (this backend block can't reference
+  # variables or other resources at all -- Terraform evaluates it before
+  # anything else).
+  backend "s3" {
+    bucket         = "fleetalert-ai-terraform-state"
+    key            = "demo/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "fleetalert-ai-terraform-lock"
+    encrypt        = true
+  }
 }
 
 provider "aws" {
