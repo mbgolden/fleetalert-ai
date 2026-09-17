@@ -17,3 +17,10 @@ UV="$(command -v uv || echo "$HOME/.local/bin/uv")"
 rm -rf build/lambda_package
 mkdir -p build/lambda_package
 "$UV" pip install --target build/lambda_package .
+
+# Normalize mtimes so the zip Terraform's archive_file builds is
+# byte-reproducible across runs with no real code change -- pip/uv give
+# every installed file a real install-time mtime, which otherwise makes
+# every `terraform plan` show all Lambda functions as "to change" purely
+# from a hash difference, even when nothing actually changed.
+find build/lambda_package -exec touch -t 202601010000 {} +
