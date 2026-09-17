@@ -21,4 +21,8 @@ jobs:
           aws-region: us-east-1
       - uses: hashicorp/setup-terraform@v3
       - run: terraform init
+      - name: Import pre-existing state resources (safe no-op if not yet created or already tracked)
+        run: |
+          terraform import aws_s3_bucket.terraform_state fleetalert-ai-terraform-state || true
+          terraform import aws_dynamodb_table.terraform_lock fleetalert-ai-terraform-lock || true
       - run: terraform apply -auto-approve
