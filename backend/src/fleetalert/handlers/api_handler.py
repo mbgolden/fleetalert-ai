@@ -28,7 +28,7 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
 
     try:
         if route_key == "GET /demo/alerts":
-            return _json(200, {"alerts": repositories.list_alerts()})
+            return _json(200, {"alerts": _list_alerts_with_machine_info()})
 
         if route_key == "POST /demo/alerts/{alert_id}/investigate":
             return _start_investigation(path_params["alert_id"])
@@ -50,6 +50,16 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         return _json(404, {"error": str(exc)})
 
     return _json(404, {"error": f"No such route: {route_key}"})
+
+
+def _list_alerts_with_machine_info() -> list[dict[str, Any]]:
+    alerts = repositories.list_alerts()
+    for alert in alerts:
+        machine = repositories.get_machine(alert["machine_id"])
+        if machine is not None:
+            alert["machine_name"] = machine.get("name")
+            alert["machine_type"] = machine.get("machine_type")
+    return alerts
 
 
 def _start_investigation(alert_id: str) -> dict[str, Any]:

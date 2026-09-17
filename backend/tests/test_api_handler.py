@@ -4,7 +4,14 @@ from typing import Any
 import pytest
 
 from fleetalert.handlers import api_handler
-from fleetalert.repositories import create_alert, get_alert, get_audit_trail, update_alert
+from fleetalert.repositories import (
+    create_alert,
+    get_alert,
+    get_audit_trail,
+    put_machine,
+    update_alert,
+)
+from fleetalert.seed_data import SEED_MACHINES
 
 
 class _FakeStepFunctionsClient:
@@ -48,14 +55,17 @@ def _seed_alert(alert_id: str, **overrides: object) -> None:
 
 
 def test_list_alerts_route(dynamodb_tables: None) -> None:
+    put_machine(SEED_MACHINES[1])  # M-1002, refrigeration_unit
     _seed_alert("ALERT-1")
     _seed_alert("ALERT-2")
 
     resp = api_handler.handler({"routeKey": "GET /demo/alerts"}, None)
 
     assert resp["statusCode"] == 200
-    alert_ids = {a["alert_id"] for a in json.loads(resp["body"])["alerts"]}
-    assert alert_ids == {"ALERT-1", "ALERT-2"}
+    alerts = json.loads(resp["body"])["alerts"]
+    assert {a["alert_id"] for a in alerts} == {"ALERT-1", "ALERT-2"}
+    assert all(a["machine_name"] == "Trailer 7 - Reefer Unit" for a in alerts)
+    assert all(a["machine_type"] == "refrigeration_unit" for a in alerts)
 
 
 def test_investigate_route_starts_execution(

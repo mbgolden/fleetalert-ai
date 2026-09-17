@@ -84,3 +84,57 @@ SEED_KNOWLEDGE_BASE: list[dict[str, Any]] = [
         "known_fix": "schedule_service_visit",
     },
 ]
+
+# The fixed set of demo scenarios visitors pick from (GET /demo/alerts) --
+# no free-text input anywhere, per docs/decisions/ADR-0003. ALERT-1004
+# reuses the same ambiguous coolant-temp-spike symptom as ALERT-1001 but a
+# different machine/severity, to show the conflict isn't a one-off fluke.
+# ALERT-1005 has no matching KB entry at all, for a scenario where the
+# agent genuinely doesn't have a confident answer to give.
+SEED_ALERTS: list[dict[str, Any]] = [
+    {
+        "alert_id": "ALERT-1001",
+        "machine_id": "M-1001",
+        "org_id": "org-demo",
+        "alert_type": "coolant_temp_spike",
+        "severity": "high",
+        "status": "open",
+        "created_at": "2026-09-17T08:00:00+00:00",
+    },
+    {
+        "alert_id": "ALERT-1002",
+        "machine_id": "M-1002",
+        "org_id": "org-demo",
+        "alert_type": "temperature_drift",
+        "severity": "medium",
+        "status": "open",
+        "created_at": "2026-09-17T08:05:00+00:00",
+    },
+    {
+        "alert_id": "ALERT-1003",
+        "machine_id": "M-1003",
+        "org_id": "org-demo",
+        "alert_type": "oil_pressure_warning",
+        "severity": "low",
+        "status": "open",
+        "created_at": "2026-09-17T08:10:00+00:00",
+    },
+    {
+        "alert_id": "ALERT-1004",
+        "machine_id": "M-1001",
+        "org_id": "org-demo",
+        "alert_type": "coolant_temp_spike",
+        "severity": "medium",
+        "status": "open",
+        "created_at": "2026-09-17T08:15:00+00:00",
+    },
+    {
+        "alert_id": "ALERT-1005",
+        "machine_id": "M-1002",
+        "org_id": "org-demo",
+        "alert_type": "compressor_fault",
+        "severity": "high",
+        "status": "open",
+        "created_at": "2026-09-17T08:20:00+00:00",
+    },
+]
