@@ -1,0 +1,29 @@
+[project]
+name = "fleetalert-ai"
+version = "0.1.0"
+description = "Agent investigation loop, tools, and Lambda handlers for FleetAlert AI"
+requires-python = ">=3.12"
+dependencies = [
+    "boto3>=1.35",
+    "anthropic>=0.40",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "moto>=5.0",
+    "ruff>=0.7",
+    "mypy>=1.13",
+    "bandit>=1.8",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
