@@ -7,8 +7,7 @@
 # the lifetime of that one GitHub Actions run and is then discarded); after
 # that, infra/envs/demo points its own backend at the bucket/table created
 # here, using their hardcoded names, and everything from that point on is
-# managed under the real remote backend. See
-# docs/decisions/ADR-0005-terraform-apply-via-gated-github-environment.md.
+# managed under the real remote backend.
 
 terraform {
   required_version = ">= 1.9"
