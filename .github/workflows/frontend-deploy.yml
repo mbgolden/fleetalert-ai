@@ -1,0 +1,40 @@
+name: Frontend Deploy
+
+# Builds the React app and syncs it to the S3 bucket CloudFront serves,
+# then invalidates the CloudFront cache. Manually triggered, gated behind
+# the aws-apply environment's required-reviewer approval -- same pattern
+# as the Terraform apply workflows, even though this isn't a Terraform
+# apply itself (no infrastructure created/changed, just content pushed
+# to an already-existing bucket).
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: aws-apply
+    permissions:
+      id-token: write
+      contents: read
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm ci
+      - name: Build
+        env:
+          VITE_API_BASE_URL: ${{ vars.API_BASE_URL }}
+        run: npm run build
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_APPLY_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: Sync to S3
+        run: aws s3 sync dist/ "s3://${{ vars.FRONTEND_BUCKET_NAME }}" --delete
+      - name: Invalidate CloudFront cache
+        run: aws cloudfront create-invalidation --distribution-id "${{ vars.FRONTEND_DISTRIBUTION_ID }}" --paths "/*"
