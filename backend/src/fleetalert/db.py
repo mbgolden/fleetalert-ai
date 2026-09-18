@@ -4,17 +4,15 @@ Table names here must match what infra/modules/dynamodb/main.tf provisions
 in AWS (`${project_name}-${environment}-<suffix>`).
 """
 
-import os
 from typing import Any
 
 import boto3
 
-PROJECT_NAME = "fleetalert-ai"
-ENVIRONMENT = os.environ.get("FLEETALERT_ENV", "demo")
+from fleetalert import config
 
 
 def _table_name(suffix: str) -> str:
-    return f"{PROJECT_NAME}-{ENVIRONMENT}-{suffix}"
+    return f"{config.PROJECT_NAME}-{config.environment()}-{suffix}"
 
 
 MACHINES_TABLE = _table_name("machines")
@@ -25,4 +23,4 @@ AUDIT_LOG_TABLE = _table_name("audit-log")
 
 
 def get_dynamodb_resource() -> Any:
-    return boto3.resource("dynamodb", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+    return boto3.resource("dynamodb", region_name=config.aws_region())

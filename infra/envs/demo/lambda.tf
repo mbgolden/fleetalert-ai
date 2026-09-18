@@ -17,6 +17,7 @@ locals {
 
   common_environment = {
     FLEETALERT_ENV = "demo"
+    LOG_LEVEL      = "INFO"
   }
 
   common_tags = {
@@ -35,6 +36,7 @@ module "lambda_agent_loop" {
 
   environment = merge(local.common_environment, {
     ANTHROPIC_SECRET_ARN = aws_secretsmanager_secret.anthropic_api_key.arn
+    FLEETALERT_MODEL     = "claude-sonnet-5"
   })
 
   policy_statements = [

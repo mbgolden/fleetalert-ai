@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import json
-import os
 from typing import Any
 
 import anthropic
 import boto3
 
-from fleetalert import repositories
+from fleetalert import config, repositories
 from fleetalert.agent.loop import run_investigation
+from fleetalert.logging_config import alert_logger, configure_logging
+
+configure_logging()
 
 _secret_cache: dict[str, str] = {}
 
@@ -26,7 +28,7 @@ def _get_anthropic_api_key() -> str:
     "anthropic-api-key"), not plaintext, so SecretString is a JSON blob to
     unwrap, not the raw key itself.
     """
-    secret_arn = os.environ["ANTHROPIC_SECRET_ARN"]
+    secret_arn = config.require(config.anthropic_secret_arn(), "ANTHROPIC_SECRET_ARN")
     if secret_arn not in _secret_cache:
         client = boto3.client("secretsmanager")
         secret_string = client.get_secret_value(SecretId=secret_arn)["SecretString"]
@@ -36,9 +38,13 @@ def _get_anthropic_api_key() -> str:
 
 def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     alert_id = event["alert_id"]
+    log = alert_logger(__name__, alert_id)
+    log.info("RunInvestigation task invoked")
     try:
         client = anthropic.Anthropic(api_key=_get_anthropic_api_key())
-        return run_investigation(alert_id, client)
+        result = run_investigation(alert_id, client)
+        log.info("RunInvestigation task complete: %s", result.get("outcome"))
+        return result
     except Exception:
         # Best-effort marker for whichever attempt turns out to be the
         # last one Step Functions makes (see infra/modules/step_functions
@@ -46,6 +52,7 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         # Every earlier retry re-enters run_investigation, which resets
         # status back to "investigating" before this can matter; only the
         # final, un-retried failure leaves "failed" in place.
+        log.exception("RunInvestigation task raised")
         _mark_failed(alert_id)
         raise
 

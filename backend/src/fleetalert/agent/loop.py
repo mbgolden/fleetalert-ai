@@ -21,13 +21,12 @@ import json
 import uuid
 from typing import Any
 
-from fleetalert import repositories
+from fleetalert import config, repositories
 from fleetalert.agent.guardrails import MAX_LOOP_ITERATIONS, GuardrailViolation
 from fleetalert.agent.tools import TOOL_SCHEMAS, execute_tool
+from fleetalert.logging_config import alert_logger
 from fleetalert.repositories import ConcurrentUpdateError
 from fleetalert.whitelist import is_whitelisted
-
-DEFAULT_MODEL = "claude-sonnet-5"
 
 _CONTINUE_NUDGE = (
     "Continue the investigation using the available tools, or call "
@@ -39,15 +38,18 @@ def run_investigation(
     alert_id: str,
     client: Any,
     *,
-    model: str = DEFAULT_MODEL,
+    model: str | None = None,
     max_iterations: int = MAX_LOOP_ITERATIONS,
 ) -> dict[str, Any]:
+    model = model or config.anthropic_model()
     alert = repositories.get_alert(alert_id)
     if alert is None:
         raise ValueError(f"No such alert: {alert_id}")
     machine = repositories.get_machine(alert["machine_id"])
     if machine is None:
         raise ValueError(f"No such machine: {alert['machine_id']}")
+
+    log = alert_logger(__name__, alert_id)
 
     try:
         repositories.update_alert_if_current(
@@ -57,8 +59,17 @@ def run_investigation(
         # A duplicate trigger (double /investigate click, a retried Step
         # Functions execution) landed after this alert already moved past
         # open/investigating -- report the real outcome, don't re-run.
+        log.info("duplicate investigation trigger ignored, reporting existing outcome")
         return _current_alert_outcome(alert_id)
 
+    log.info(
+        "investigation started: alert_type=%s severity=%s machine_type=%s max_iterations=%d model=%s",
+        alert["alert_type"],
+        alert["severity"],
+        machine["machine_type"],
+        max_iterations,
+        model,
+    )
     repositories.append_audit_log(alert_id, actor="agent", action="investigation_started", details={})
 
     system_prompt = _build_system_prompt(machine)
@@ -73,7 +84,8 @@ def run_investigation(
         }
     ]
 
-    for _ in range(max_iterations):
+    for iteration in range(1, max_iterations + 1):
+        log.debug("loop iteration %d/%d: calling model", iteration, max_iterations)
         response = client.messages.create(
             model=model,
             max_tokens=1024,
@@ -85,12 +97,14 @@ def run_investigation(
 
         tool_use_blocks = [b for b in response.content if getattr(b, "type", None) == "tool_use"]
         if not tool_use_blocks:
+            log.info("iteration %d/%d: model returned no tool call, nudging it to continue", iteration, max_iterations)
             messages.append({"role": "user", "content": _CONTINUE_NUDGE})
             continue
 
         tool_results = []
         propose_fix_input: dict[str, Any] | None = None
         for block in tool_use_blocks:
+            log.info("iteration %d/%d: tool call -> %s", iteration, max_iterations, block.name)
             repositories.append_audit_log(
                 alert_id, actor="agent", action=block.name, details={"input": block.input}
             )
@@ -104,8 +118,10 @@ def run_investigation(
         messages.append({"role": "user", "content": tool_results})
 
         if propose_fix_input is not None:
+            log.info("iteration %d/%d: propose_fix received -> fix_id=%s", iteration, max_iterations, propose_fix_input.get("fix_id"))
             return _finalize_proposed_fix(alert_id, propose_fix_input)
 
+    log.warning("max_iterations (%d) exhausted without a proposed fix -- routing to support", max_iterations)
     return _route_to_support(alert_id, reason="max_iterations_exceeded")
 
 
@@ -118,15 +134,19 @@ def confirm_fix(alert_id: str, confirmation_token: str) -> dict[str, Any]:
     ExecuteFix state -- a real time gap, unlike the loop's own steps, so
     "confirm" is logged here rather than bundled into execute_fix.
     """
+    log = alert_logger(__name__, alert_id)
     alert = repositories.get_alert(alert_id)
     if alert is None:
         raise ValueError(f"No such alert: {alert_id}")
     if alert.get("status") != "awaiting_confirmation":
+        log.warning("confirm rejected: status=%r is not awaiting_confirmation", alert.get("status"))
         raise GuardrailViolation(f"Alert {alert_id} is not awaiting confirmation")
     if alert.get("confirmation_token") != confirmation_token:
+        log.warning("confirm rejected: confirmation_token mismatch")
         raise GuardrailViolation("Invalid confirmation token")
 
     fix_id = alert["proposed_fix"]
+    log.info("confirmed by human -> fix_id=%s", fix_id)
     repositories.append_audit_log(alert_id, actor="human", action="confirm", details={"fix_id": fix_id})
     return {
         "alert_id": alert_id,
@@ -143,17 +163,22 @@ def execute_fix(alert_id: str, fix_id: str, confirmation_token: str) -> dict[str
     given that gate, but this is the guardrail of last resort before
     anything actually runs.
     """
+    log = alert_logger(__name__, alert_id)
     alert = repositories.get_alert(alert_id)
     if alert is None:
         raise ValueError(f"No such alert: {alert_id}")
 
     if alert.get("status") != "awaiting_confirmation":
+        log.warning("execute_fix rejected: status=%r is not awaiting_confirmation", alert.get("status"))
         raise GuardrailViolation(f"Alert {alert_id} is not awaiting confirmation")
     if alert.get("confirmation_token") != confirmation_token:
+        log.warning("execute_fix rejected: confirmation_token mismatch")
         raise GuardrailViolation("Invalid confirmation token")
     if alert.get("proposed_fix") != fix_id:
+        log.warning("execute_fix rejected: fix_id=%s does not match proposed_fix=%s", fix_id, alert.get("proposed_fix"))
         raise GuardrailViolation("fix_id does not match the proposed fix")
     if not is_whitelisted(fix_id):
+        log.error("execute_fix rejected: fix_id=%s is not whitelisted (should be unreachable)", fix_id)
         raise GuardrailViolation(f"Fix type {fix_id!r} is not whitelisted")
 
     try:
@@ -161,19 +186,23 @@ def execute_fix(alert_id: str, fix_id: str, confirmation_token: str) -> dict[str
             alert_id, expected_status="awaiting_confirmation", status="resolved"
         )
     except ConcurrentUpdateError as exc:
+        log.warning("execute_fix lost a race: alert already resolved or moved on")
         raise GuardrailViolation(
             f"Alert {alert_id} was already resolved or moved on by another request"
         ) from exc
 
+    log.info("fix executed -> fix_id=%s, status=resolved", fix_id)
     repositories.append_audit_log(alert_id, actor="agent", action="execute_fix", details={"fix_id": fix_id})
     return {"outcome": "resolved", "alert_id": alert_id, "fix_id": fix_id}
 
 
 def reject_fix(alert_id: str, *, reason: str | None = None) -> dict[str, Any]:
+    log = alert_logger(__name__, alert_id)
     alert = repositories.get_alert(alert_id)
     if alert is None:
         raise ValueError(f"No such alert: {alert_id}")
     if alert.get("status") != "awaiting_confirmation":
+        log.warning("reject rejected: status=%r is not awaiting_confirmation", alert.get("status"))
         raise GuardrailViolation(f"Alert {alert_id} is not awaiting confirmation")
 
     try:
@@ -181,20 +210,25 @@ def reject_fix(alert_id: str, *, reason: str | None = None) -> dict[str, Any]:
             alert_id, expected_status="awaiting_confirmation", status="rejected"
         )
     except ConcurrentUpdateError as exc:
+        log.warning("reject lost a race: alert already resolved or moved on")
         raise GuardrailViolation(
             f"Alert {alert_id} was already resolved or moved on by another request"
         ) from exc
 
+    log.info("rejected by human, reason=%r", reason)
     repositories.append_audit_log(alert_id, actor="human", action="reject", details={"reason": reason})
     return {"outcome": "rejected", "alert_id": alert_id}
 
 
 def _finalize_proposed_fix(alert_id: str, proposal: dict[str, Any]) -> dict[str, Any]:
+    log = alert_logger(__name__, alert_id)
     fix_id = proposal["fix_id"]
 
     if not is_whitelisted(fix_id):
+        log.warning("proposed fix_id=%s is not whitelisted -- routing to support", fix_id)
         return _route_to_support(alert_id, reason="fix_not_whitelisted", fix_id=fix_id)
 
+    log.info("proposed fix_id=%s is whitelisted -- awaiting human confirmation", fix_id)
     token = str(uuid.uuid4())
     try:
         repositories.update_alert_if_current(
@@ -224,6 +258,7 @@ def _finalize_proposed_fix(alert_id: str, proposal: dict[str, Any]) -> dict[str,
 
 
 def _route_to_support(alert_id: str, *, reason: str, fix_id: str | None = None) -> dict[str, Any]:
+    log = alert_logger(__name__, alert_id)
     try:
         repositories.update_alert_if_current(
             alert_id, expected_status="investigating", status="routed_to_support"
@@ -231,6 +266,7 @@ def _route_to_support(alert_id: str, *, reason: str, fix_id: str | None = None) 
     except ConcurrentUpdateError:
         return _current_alert_outcome(alert_id)
 
+    log.info("routed to support, reason=%s", reason)
     details: dict[str, Any] = {"reason": reason}
     if fix_id is not None:
         details["fix_id"] = fix_id

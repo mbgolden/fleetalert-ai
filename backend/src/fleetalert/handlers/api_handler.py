@@ -11,20 +11,25 @@ at this project's scale.
 from __future__ import annotations
 
 import json
-import os
+import logging
 from typing import Any
 
 import boto3
 
-from fleetalert import repositories
+from fleetalert import config, repositories
 from fleetalert.agent.guardrails import GuardrailViolation
 from fleetalert.agent.loop import confirm_fix, reject_fix
+from fleetalert.logging_config import alert_logger, configure_logging
+
+configure_logging()
+_logger = logging.getLogger(__name__)
 
 
 def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     route_key = event["routeKey"]
     path_params = event.get("pathParameters") or {}
     body = json.loads(event["body"]) if event.get("body") else {}
+    _logger.info("route hit: %s", route_key)
 
     try:
         if route_key == "GET /demo/alerts":
@@ -45,10 +50,13 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         if route_key == "GET /demo/alerts/{alert_id}/audit":
             return _json(200, {"audit_trail": repositories.get_audit_trail(path_params["alert_id"])})
     except GuardrailViolation as exc:
+        _logger.warning("route %s rejected by guardrail: %s", route_key, exc)
         return _json(403, {"error": str(exc)})
     except ValueError as exc:
+        _logger.info("route %s: not found: %s", route_key, exc)
         return _json(404, {"error": str(exc)})
 
+    _logger.warning("no such route: %s", route_key)
     return _json(404, {"error": f"No such route: {route_key}"})
 
 
@@ -63,10 +71,13 @@ def _list_alerts_with_machine_info() -> list[dict[str, Any]]:
 
 
 def _start_investigation(alert_id: str) -> dict[str, Any]:
+    log = alert_logger(__name__, alert_id)
+    state_machine_arn = config.require(config.state_machine_arn(), "STATE_MACHINE_ARN")
     boto3.client("stepfunctions").start_execution(
-        stateMachineArn=os.environ["STATE_MACHINE_ARN"],
+        stateMachineArn=state_machine_arn,
         input=json.dumps({"alert_id": alert_id}),
     )
+    log.info("investigation triggered via API")
     return _json(202, {"alert_id": alert_id, "status": "investigation_started"})
 
 
@@ -88,10 +99,12 @@ def _get_status(alert_id: str) -> dict[str, Any]:
 
 
 def _confirm(alert_id: str, body: dict[str, Any]) -> dict[str, Any]:
+    log = alert_logger(__name__, alert_id)
     result = confirm_fix(alert_id, body.get("confirmation_token", ""))
 
     task_token = result.get("step_functions_task_token")
     if task_token:
+        log.info("resuming Step Functions via SendTaskSuccess")
         boto3.client("stepfunctions").send_task_success(
             taskToken=task_token,
             output=json.dumps(
@@ -102,10 +115,13 @@ def _confirm(alert_id: str, body: dict[str, Any]) -> dict[str, Any]:
                 }
             ),
         )
+    else:
+        log.warning("confirmed but no step_functions_task_token on the alert -- nothing to resume")
     return _json(200, {"alert_id": alert_id, "outcome": "confirmed"})
 
 
 def _reject(alert_id: str, body: dict[str, Any]) -> dict[str, Any]:
+    log = alert_logger(__name__, alert_id)
     alert = repositories.get_alert(alert_id)
     if alert is None:
         return _json(404, {"error": f"No such alert: {alert_id}"})
@@ -114,6 +130,7 @@ def _reject(alert_id: str, body: dict[str, Any]) -> dict[str, Any]:
     result = reject_fix(alert_id, reason=body.get("reason"))
 
     if task_token:
+        log.info("failing Step Functions wait via SendTaskFailure")
         boto3.client("stepfunctions").send_task_failure(
             taskToken=task_token,
             error="Rejected",

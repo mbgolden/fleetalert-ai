@@ -13,10 +13,15 @@ from __future__ import annotations
 from typing import Any
 
 from fleetalert import repositories
+from fleetalert.logging_config import alert_logger, configure_logging
+
+configure_logging()
 
 
 def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     alert_id = event["alert_id"]
+    log = alert_logger(__name__, alert_id)
+    log.info("state machine paused, persisting task token")
     repositories.update_alert(alert_id, step_functions_task_token=event["task_token"])
     repositories.append_audit_log(
         alert_id,

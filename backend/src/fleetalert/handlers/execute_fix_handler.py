@@ -11,16 +11,24 @@ from typing import Any
 
 from fleetalert import repositories
 from fleetalert.agent.loop import execute_fix
+from fleetalert.logging_config import alert_logger, configure_logging
+
+configure_logging()
 
 
 def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     alert_id = event["alert_id"]
+    log = alert_logger(__name__, alert_id)
+    log.info("ExecuteFix task invoked, fix_id=%s", event.get("fix_id"))
     try:
-        return execute_fix(alert_id, event["fix_id"], event["confirmation_token"])
+        result = execute_fix(alert_id, event["fix_id"], event["confirmation_token"])
+        log.info("ExecuteFix task complete: %s", result.get("outcome"))
+        return result
     except Exception:
         # See agent_loop_handler._mark_failed -- same best-effort pattern,
         # for the same Retry/Catch structure on this task in the state
         # machine.
+        log.exception("ExecuteFix task raised")
         _mark_failed(alert_id)
         raise
 
