@@ -24,6 +24,7 @@ from typing import Any
 from fleetalert import repositories
 from fleetalert.agent.guardrails import MAX_LOOP_ITERATIONS, GuardrailViolation
 from fleetalert.agent.tools import TOOL_SCHEMAS, execute_tool
+from fleetalert.repositories import ConcurrentUpdateError
 from fleetalert.whitelist import is_whitelisted
 
 DEFAULT_MODEL = "claude-sonnet-5"
@@ -48,7 +49,16 @@ def run_investigation(
     if machine is None:
         raise ValueError(f"No such machine: {alert['machine_id']}")
 
-    repositories.update_alert(alert_id, status="investigating")
+    try:
+        repositories.update_alert_if_current(
+            alert_id, expected_status=["open", "investigating"], status="investigating"
+        )
+    except ConcurrentUpdateError:
+        # A duplicate trigger (double /investigate click, a retried Step
+        # Functions execution) landed after this alert already moved past
+        # open/investigating -- report the real outcome, don't re-run.
+        return _current_alert_outcome(alert_id)
+
     repositories.append_audit_log(alert_id, actor="agent", action="investigation_started", details={})
 
     system_prompt = _build_system_prompt(machine)
@@ -146,8 +156,16 @@ def execute_fix(alert_id: str, fix_id: str, confirmation_token: str) -> dict[str
     if not is_whitelisted(fix_id):
         raise GuardrailViolation(f"Fix type {fix_id!r} is not whitelisted")
 
+    try:
+        repositories.update_alert_if_current(
+            alert_id, expected_status="awaiting_confirmation", status="resolved"
+        )
+    except ConcurrentUpdateError as exc:
+        raise GuardrailViolation(
+            f"Alert {alert_id} was already resolved or moved on by another request"
+        ) from exc
+
     repositories.append_audit_log(alert_id, actor="agent", action="execute_fix", details={"fix_id": fix_id})
-    repositories.update_alert(alert_id, status="resolved")
     return {"outcome": "resolved", "alert_id": alert_id, "fix_id": fix_id}
 
 
@@ -158,8 +176,16 @@ def reject_fix(alert_id: str, *, reason: str | None = None) -> dict[str, Any]:
     if alert.get("status") != "awaiting_confirmation":
         raise GuardrailViolation(f"Alert {alert_id} is not awaiting confirmation")
 
+    try:
+        repositories.update_alert_if_current(
+            alert_id, expected_status="awaiting_confirmation", status="rejected"
+        )
+    except ConcurrentUpdateError as exc:
+        raise GuardrailViolation(
+            f"Alert {alert_id} was already resolved or moved on by another request"
+        ) from exc
+
     repositories.append_audit_log(alert_id, actor="human", action="reject", details={"reason": reason})
-    repositories.update_alert(alert_id, status="rejected")
     return {"outcome": "rejected", "alert_id": alert_id}
 
 
@@ -170,14 +196,22 @@ def _finalize_proposed_fix(alert_id: str, proposal: dict[str, Any]) -> dict[str,
         return _route_to_support(alert_id, reason="fix_not_whitelisted", fix_id=fix_id)
 
     token = str(uuid.uuid4())
-    repositories.update_alert(
-        alert_id,
-        status="awaiting_confirmation",
-        proposed_fix=fix_id,
-        confidence=proposal.get("confidence"),
-        root_cause_summary=proposal.get("description"),
-        confirmation_token=token,
-    )
+    try:
+        repositories.update_alert_if_current(
+            alert_id,
+            expected_status="investigating",
+            status="awaiting_confirmation",
+            proposed_fix=fix_id,
+            confidence=proposal.get("confidence"),
+            root_cause_summary=proposal.get("description"),
+            confirmation_token=token,
+        )
+    except ConcurrentUpdateError:
+        # A retried invocation of this same investigation landed after an
+        # earlier attempt already finished -- report what actually won
+        # instead of clobbering it.
+        return _current_alert_outcome(alert_id)
+
     repositories.append_audit_log(
         alert_id, actor="system", action="request_confirmation", details={"fix_id": fix_id}
     )
@@ -190,12 +224,37 @@ def _finalize_proposed_fix(alert_id: str, proposal: dict[str, Any]) -> dict[str,
 
 
 def _route_to_support(alert_id: str, *, reason: str, fix_id: str | None = None) -> dict[str, Any]:
-    repositories.update_alert(alert_id, status="routed_to_support")
+    try:
+        repositories.update_alert_if_current(
+            alert_id, expected_status="investigating", status="routed_to_support"
+        )
+    except ConcurrentUpdateError:
+        return _current_alert_outcome(alert_id)
+
     details: dict[str, Any] = {"reason": reason}
     if fix_id is not None:
         details["fix_id"] = fix_id
     repositories.append_audit_log(alert_id, actor="system", action="route_to_support", details=details)
     return {"outcome": "routed_to_support", "alert_id": alert_id, "reason": reason}
+
+
+def _current_alert_outcome(alert_id: str) -> dict[str, Any]:
+    """Reports whatever status already won a race, rather than raising.
+
+    Only reachable after our own ConditionExpression has already proven the
+    alert moved past "investigating" -- so status here is always one of the
+    terminal-ish outcomes below, never "investigating" itself.
+    """
+    alert = repositories.get_alert(alert_id)
+    status = alert.get("status") if alert else None
+    if status == "awaiting_confirmation" and alert is not None:
+        return {
+            "outcome": "awaiting_confirmation",
+            "alert_id": alert_id,
+            "fix_id": alert.get("proposed_fix"),
+            "confirmation_token": alert.get("confirmation_token"),
+        }
+    return {"outcome": status, "alert_id": alert_id}
 
 
 def _build_system_prompt(machine: dict[str, Any]) -> str:

@@ -12,7 +12,12 @@ import {
   startInvestigation,
 } from "../api";
 
-const TERMINAL_STATUSES = new Set<AlertStatus>(["resolved", "rejected", "routed_to_support"]);
+const TERMINAL_STATUSES = new Set<AlertStatus>([
+  "resolved",
+  "rejected",
+  "routed_to_support",
+  "failed",
+]);
 const POLL_INTERVAL_MS = 2000;
 
 export default function AlertDetail() {
@@ -117,6 +122,11 @@ export default function AlertDetail() {
           {status.status === "rejected" && <p className="outcome rejected">Fix was rejected.</p>}
           {status.status === "routed_to_support" && (
             <p className="outcome routed">No safe automated fix — routed to human support.</p>
+          )}
+          {status.status === "failed" && (
+            <p className="outcome rejected">
+              Investigation failed after retries. See the trace below, or check CloudWatch.
+            </p>
           )}
         </>
       )}

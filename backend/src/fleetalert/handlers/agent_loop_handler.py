@@ -9,6 +9,7 @@ from typing import Any
 import anthropic
 import boto3
 
+from fleetalert import repositories
 from fleetalert.agent.loop import run_investigation
 
 _secret_cache: dict[str, str] = {}
@@ -34,5 +35,24 @@ def _get_anthropic_api_key() -> str:
 
 
 def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
-    client = anthropic.Anthropic(api_key=_get_anthropic_api_key())
-    return run_investigation(event["alert_id"], client)
+    alert_id = event["alert_id"]
+    try:
+        client = anthropic.Anthropic(api_key=_get_anthropic_api_key())
+        return run_investigation(alert_id, client)
+    except Exception:
+        # Best-effort marker for whichever attempt turns out to be the
+        # last one Step Functions makes (see infra/modules/step_functions
+        # -- retried up to 6 times before landing on the Failed state).
+        # Every earlier retry re-enters run_investigation, which resets
+        # status back to "investigating" before this can matter; only the
+        # final, un-retried failure leaves "failed" in place.
+        _mark_failed(alert_id)
+        raise
+
+
+def _mark_failed(alert_id: str) -> None:
+    try:
+        repositories.update_alert(alert_id, status="failed")
+        repositories.append_audit_log(alert_id, actor="system", action="execution_failed", details={})
+    except Exception:  # noqa: BLE001, S110 -- best-effort; must never mask the real error  # nosec B110
+        pass

@@ -1,4 +1,8 @@
+import pytest
+
+from fleetalert.db import ALERTS_TABLE, get_dynamodb_resource
 from fleetalert.repositories import (
+    ConcurrentUpdateError,
     append_audit_log,
     create_alert,
     get_alert,
@@ -11,6 +15,7 @@ from fleetalert.repositories import (
     put_telemetry_reading,
     search_knowledge_base,
     update_alert,
+    update_alert_if_current,
 )
 from fleetalert.seed_data import SEED_KNOWLEDGE_BASE, SEED_MACHINES
 
@@ -91,6 +96,63 @@ def test_alert_create_and_update(dynamodb_tables: None) -> None:
     alert = get_alert("ALERT-1")
     assert alert is not None
     assert alert["status"] == "investigating"
+
+
+def _seed_alert(alert_id: str, status: str) -> None:
+    create_alert(
+        {
+            "alert_id": alert_id,
+            "machine_id": "M-1001",
+            "org_id": "org-demo",
+            "alert_type": "coolant_temp_spike",
+            "severity": "high",
+            "status": status,
+            "created_at": "2026-09-17T10:05:00",
+        }
+    )
+
+
+def test_update_alert_if_current_applies_when_status_matches(dynamodb_tables: None) -> None:
+    _seed_alert("ALERT-2", "investigating")
+
+    update_alert_if_current("ALERT-2", expected_status="investigating", status="awaiting_confirmation")
+
+    alert = get_alert("ALERT-2")
+    assert alert is not None
+    assert alert["status"] == "awaiting_confirmation"
+    assert "updated_at" in alert
+
+
+def test_update_alert_if_current_accepts_a_list_of_statuses(dynamodb_tables: None) -> None:
+    _seed_alert("ALERT-3", "open")
+
+    update_alert_if_current("ALERT-3", expected_status=["open", "investigating"], status="investigating")
+
+    assert get_alert("ALERT-3")["status"] == "investigating"  # type: ignore[index]
+
+
+def test_update_alert_if_current_rejects_status_mismatch(dynamodb_tables: None) -> None:
+    _seed_alert("ALERT-4", "resolved")
+
+    with pytest.raises(ConcurrentUpdateError):
+        update_alert_if_current("ALERT-4", expected_status="investigating", status="awaiting_confirmation")
+
+    assert get_alert("ALERT-4")["status"] == "resolved"  # type: ignore[index]
+
+
+def test_update_alert_if_current_rejects_a_write_older_than_the_last_one(dynamodb_tables: None) -> None:
+    _seed_alert("ALERT-5", "investigating")
+
+    # Simulate a newer write having already landed, bypassing the
+    # repository layer -- purely to set up the race for this test.
+    get_dynamodb_resource().Table(ALERTS_TABLE).update_item(
+        Key={"alert_id": "ALERT-5"},
+        UpdateExpression="SET updated_at = :ts",
+        ExpressionAttributeValues={":ts": "2099-01-01T00:00:00+00:00"},
+    )
+
+    with pytest.raises(ConcurrentUpdateError):
+        update_alert_if_current("ALERT-5", expected_status="investigating", status="awaiting_confirmation")
 
 
 def test_audit_log_is_append_only_and_ordered(dynamodb_tables: None) -> None:

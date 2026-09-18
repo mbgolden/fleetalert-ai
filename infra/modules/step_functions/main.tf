@@ -75,6 +75,20 @@ resource "aws_sfn_state_machine" "this" {
         }
         ResultPath = "$.investigation"
         Next       = "IsAwaitingConfirmation"
+        Retry = [
+          {
+            ErrorEquals     = ["States.ALL"]
+            IntervalSeconds = 2
+            MaxAttempts     = 6
+            BackoffRate     = 2.0
+          }
+        ]
+        Catch = [
+          {
+            ErrorEquals = ["States.ALL"]
+            Next        = "Failed"
+          }
+        ]
       }
 
       IsAwaitingConfirmation = {
@@ -121,6 +135,20 @@ resource "aws_sfn_state_machine" "this" {
           }
         }
         Next = "Complete"
+        Retry = [
+          {
+            ErrorEquals     = ["States.ALL"]
+            IntervalSeconds = 2
+            MaxAttempts     = 6
+            BackoffRate     = 2.0
+          }
+        ]
+        Catch = [
+          {
+            ErrorEquals = ["States.ALL"]
+            Next        = "Failed"
+          }
+        ]
       }
 
       Complete = {
@@ -135,6 +163,18 @@ resource "aws_sfn_state_machine" "this" {
         Type  = "Fail"
         Error = "Rejected"
         Cause = "The proposed fix was rejected, or the confirmation wait failed."
+      }
+
+      # Reached only after RunInvestigation or ExecuteFix exhausts its 6
+      # retries -- see fleetalert.handlers.agent_loop_handler and
+      # execute_fix_handler, which mark the alert's own status "failed"
+      # (best-effort) before re-raising, on the *last* attempt only, since
+      # each earlier retry re-enters "investigating"/"awaiting_confirmation"
+      # first and overwrites it.
+      Failed = {
+        Type  = "Fail"
+        Error = "InvestigationFailed"
+        Cause = "The agent loop or fix execution failed after 6 retries."
       }
     }
   })

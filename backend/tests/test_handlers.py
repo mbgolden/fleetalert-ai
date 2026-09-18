@@ -3,6 +3,7 @@ import json
 import boto3
 import pytest
 
+from fleetalert.agent.guardrails import GuardrailViolation
 from fleetalert.handlers import agent_loop_handler
 from fleetalert.handlers.execute_fix_handler import handler as execute_fix_handler
 from fleetalert.handlers.wait_for_confirmation_handler import (
@@ -64,6 +65,29 @@ def test_execute_fix_handler_delegates_to_agent_loop(dynamodb_tables: None) -> N
     assert get_alert("ALERT-2")["status"] == "resolved"  # type: ignore[index]
 
 
+def test_execute_fix_handler_marks_alert_failed_on_exception(dynamodb_tables: None) -> None:
+    _seed_alert(
+        "ALERT-2B",
+        status="awaiting_confirmation",
+        proposed_fix="send_diagnostic_reset",
+        confirmation_token="correct-token",
+    )
+
+    with pytest.raises(GuardrailViolation):
+        execute_fix_handler(
+            {"alert_id": "ALERT-2B", "fix_id": "send_diagnostic_reset", "confirmation_token": "wrong"},
+            None,
+        )
+
+    alert = get_alert("ALERT-2B")
+    assert alert is not None
+    assert alert["status"] == "failed"
+
+    last_action = get_audit_trail("ALERT-2B")[-1]
+    assert last_action["actor"] == "system"
+    assert last_action["action"] == "execution_failed"
+
+
 def test_agent_loop_handler_fetches_secret_and_runs_investigation(
     dynamodb_tables: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -119,3 +143,31 @@ def test_agent_loop_handler_caches_secret_across_invocations(
 
     assert first == second == "sk-cached"
     agent_loop_handler._secret_cache.clear()
+
+
+def test_agent_loop_handler_marks_alert_failed_on_exception(
+    dynamodb_tables: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # M-1002 deliberately never seeded via put_machine -- run_investigation
+    # raises ValueError("No such machine: ...") for a real, unmocked reason.
+    _seed_alert("ALERT-5")
+
+    secretsmanager = boto3.client("secretsmanager", region_name="us-east-1")
+    secret = secretsmanager.create_secret(
+        Name="fail-test-key", SecretString=json.dumps({"anthropic-api-key": "sk-test"})
+    )
+    monkeypatch.setenv("ANTHROPIC_SECRET_ARN", secret["ARN"])
+    monkeypatch.setattr(
+        agent_loop_handler.anthropic, "Anthropic", lambda api_key: FakeAnthropicClient([])
+    )
+
+    with pytest.raises(ValueError, match="No such machine"):
+        agent_loop_handler.handler({"alert_id": "ALERT-5"}, None)
+
+    alert = get_alert("ALERT-5")
+    assert alert is not None
+    assert alert["status"] == "failed"
+
+    last_action = get_audit_trail("ALERT-5")[-1]
+    assert last_action["actor"] == "system"
+    assert last_action["action"] == "execution_failed"

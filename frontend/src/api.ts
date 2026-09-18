@@ -6,7 +6,8 @@ export type AlertStatus =
   | "awaiting_confirmation"
   | "resolved"
   | "rejected"
-  | "routed_to_support";
+  | "routed_to_support"
+  | "failed";
 
 export interface Alert {
   alert_id: string;

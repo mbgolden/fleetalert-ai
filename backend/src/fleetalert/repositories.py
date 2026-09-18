@@ -12,6 +12,7 @@ from decimal import Decimal
 from typing import Any
 
 from boto3.dynamodb.conditions import Key
+from botocore.exceptions import ClientError
 
 from fleetalert.db import (
     ALERTS_TABLE,
@@ -168,17 +169,94 @@ def list_alerts() -> list[dict[str, Any]]:
     return result
 
 
+class ConcurrentUpdateError(Exception):
+    """A conditional update_alert_if_current call lost a race.
+
+    Means the alert's status no longer matches what the caller expected, or
+    a newer write already landed since -- e.g. a retried Step Functions
+    task arriving after an earlier attempt already completed the same
+    transition. Callers decide what that means for them: an internal retry
+    can treat it as "someone else already finished this" and move on, an
+    externally-triggered call (a duplicate confirm/reject request) should
+    usually treat it as a hard rejection.
+    """
+
+
 def update_alert(alert_id: str, **fields: Any) -> None:
-    table = get_dynamodb_resource().Table(ALERTS_TABLE)
-    expr_names = {f"#{k}": k for k in fields}
-    expr_values = {f":{k}": _dynamo_safe(v) for k, v in fields.items()}
-    update_expr = "SET " + ", ".join(f"#{k} = :{k}" for k in fields)
-    table.update_item(
-        Key={"alert_id": alert_id},
-        UpdateExpression=update_expr,
-        ExpressionAttributeNames=expr_names,
-        ExpressionAttributeValues=expr_values,
+    _update_alert(alert_id, fields)
+
+
+def update_alert_if_current(
+    alert_id: str, *, expected_status: str | list[str], **fields: Any
+) -> None:
+    """Atomic version of update_alert for status-transition writes.
+
+    Only applies if the alert is still in `expected_status` (one status, or
+    any of a list of acceptable prior statuses) AND no newer write has
+    landed since (guarded by the monotonic `updated_at` stamp every update
+    sets) -- both checked in one ConditionExpression, so there's no
+    read-then-write gap for a concurrent writer to land in. Raises
+    ConcurrentUpdateError instead of silently racing if either check fails.
+    """
+    now = datetime.now(UTC).isoformat()
+    statuses = [expected_status] if isinstance(expected_status, str) else list(expected_status)
+    condition_values: dict[str, Any] = {"now": now}
+    placeholders = []
+    for i, status in enumerate(statuses):
+        key = f"expected_status_{i}"
+        condition_values[key] = status
+        placeholders.append(f":{key}")
+    condition_expression = (
+        f"#status IN ({', '.join(placeholders)}) "
+        "AND (attribute_not_exists(updated_at) OR updated_at < :now)"
     )
+    try:
+        _update_alert(
+            alert_id,
+            fields,
+            timestamp=now,
+            condition_expression=condition_expression,
+            condition_values=condition_values,
+        )
+    except ClientError as exc:
+        if exc.response["Error"]["Code"] == "ConditionalCheckFailedException":
+            raise ConcurrentUpdateError(
+                f"Alert {alert_id} is not in status {statuses!r}, or a newer "
+                "update has already landed"
+            ) from exc
+        raise
+
+
+def _update_alert(
+    alert_id: str,
+    fields: dict[str, Any],
+    *,
+    timestamp: str | None = None,
+    condition_expression: str | None = None,
+    condition_values: dict[str, Any] | None = None,
+) -> None:
+    all_fields = {**fields, "updated_at": timestamp or datetime.now(UTC).isoformat()}
+    table = get_dynamodb_resource().Table(ALERTS_TABLE)
+
+    expr_names = {f"#{k}": k for k in all_fields}
+    if condition_expression is not None:
+        # the condition always references #status, even if this particular
+        # update doesn't otherwise touch it
+        expr_names["#status"] = "status"
+    expr_values = {f":{k}": _dynamo_safe(v) for k, v in all_fields.items()}
+    if condition_values:
+        expr_values.update({f":{k}": _dynamo_safe(v) for k, v in condition_values.items()})
+    update_expr = "SET " + ", ".join(f"#{k} = :{k}" for k in all_fields)
+
+    kwargs: dict[str, Any] = {
+        "Key": {"alert_id": alert_id},
+        "UpdateExpression": update_expr,
+        "ExpressionAttributeNames": expr_names,
+        "ExpressionAttributeValues": expr_values,
+    }
+    if condition_expression:
+        kwargs["ConditionExpression"] = condition_expression
+    table.update_item(**kwargs)
 
 
 def append_audit_log(

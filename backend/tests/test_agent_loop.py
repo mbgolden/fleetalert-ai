@@ -9,6 +9,7 @@ from fleetalert.repositories import (
     put_knowledge_base_entry,
     put_machine,
     update_alert,
+    update_alert_if_current,
 )
 from fleetalert.seed_data import SEED_KNOWLEDGE_BASE, SEED_MACHINES
 from tests.fakes import FakeAnthropicClient, response, text_block, tool_use_block
@@ -119,6 +120,34 @@ def test_run_investigation_max_iterations_forces_route_to_support(dynamodb_table
     assert get_alert("ALERT-3")["status"] == "routed_to_support"  # type: ignore[index]
 
 
+def test_run_investigation_is_a_no_op_for_a_duplicate_trigger(dynamodb_tables: None) -> None:
+    """A duplicate /investigate trigger (or a retried Step Functions
+    execution) landing after an earlier attempt already won should report
+    that attempt's outcome, not start a second investigation from scratch.
+    """
+    _seed(alert_id="ALERT-8", machine_id="M-1002", alert_type="temperature_drift")
+    update_alert(
+        "ALERT-8",
+        status="awaiting_confirmation",
+        proposed_fix="send_diagnostic_reset",
+        confidence=0.9,
+        confirmation_token="already-won-token",
+    )
+
+    client = FakeAnthropicClient([])  # would raise if the loop tried to call Claude
+
+    result = run_investigation("ALERT-8", client)
+
+    assert result == {
+        "outcome": "awaiting_confirmation",
+        "alert_id": "ALERT-8",
+        "fix_id": "send_diagnostic_reset",
+        "confirmation_token": "already-won-token",
+    }
+    # unchanged -- the duplicate trigger never touched it
+    assert get_alert("ALERT-8")["confirmation_token"] == "already-won-token"  # type: ignore[index]
+
+
 def test_execute_fix_requires_matching_confirmation_token(dynamodb_tables: None) -> None:
     _seed(alert_id="ALERT-4", machine_id="M-1002", alert_type="temperature_drift")
     update_alert(
@@ -137,6 +166,33 @@ def test_execute_fix_requires_matching_confirmation_token(dynamodb_tables: None)
 
     actions = [e["action"] for e in get_audit_trail("ALERT-4")]
     assert actions[-1] == "execute_fix"
+
+
+def test_execute_fix_rejects_when_a_concurrent_request_already_resolved_it(
+    dynamodb_tables: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """execute_fix's own status/token checks read the alert first, same as
+    always -- this exercises what happens when reality changes between
+    that read and execute_fix's own conditional write, i.e. the actual
+    race the ConditionExpression guards against, not just the ordinary
+    "wrong status to begin with" case already covered elsewhere.
+    """
+    _seed(alert_id="ALERT-9", machine_id="M-1002", alert_type="temperature_drift")
+    update_alert(
+        "ALERT-9",
+        status="awaiting_confirmation",
+        proposed_fix="send_diagnostic_reset",
+        confirmation_token="tok",
+    )
+    stale_alert = get_alert("ALERT-9")
+
+    # A concurrent request wins the race between execute_fix's read and its
+    # own write.
+    update_alert_if_current("ALERT-9", expected_status="awaiting_confirmation", status="resolved")
+    monkeypatch.setattr("fleetalert.agent.loop.repositories.get_alert", lambda alert_id: stale_alert)
+
+    with pytest.raises(GuardrailViolation, match="already resolved or moved on"):
+        execute_fix("ALERT-9", "send_diagnostic_reset", "tok")
 
 
 def test_confirm_fix_logs_human_action_without_executing(dynamodb_tables: None) -> None:
