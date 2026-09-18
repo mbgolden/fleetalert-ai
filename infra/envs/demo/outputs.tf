@@ -13,3 +13,15 @@ output "anthropic_secret_arn" {
 output "api_endpoint" {
   value = module.api_gateway.api_endpoint
 }
+
+output "frontend_url" {
+  value = "https://${module.frontend.distribution_domain_name}"
+}
+
+output "frontend_bucket_name" {
+  value = module.frontend.bucket_name
+}
+
+output "frontend_distribution_id" {
+  value = module.frontend.distribution_id
+}

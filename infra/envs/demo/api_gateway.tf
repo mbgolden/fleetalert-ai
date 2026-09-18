@@ -35,5 +35,14 @@ module "api_gateway" {
   name                 = "${var.project_name}-demo-api"
   lambda_invoke_arn    = module.lambda_api.invoke_arn
   lambda_function_name = module.lambda_api.function_name
-  tags                 = local.common_tags
+
+  # See docs/decisions/ADR-0007-defer-cors-until-final-domains.md --
+  # localhost is a deliberate, explicit addition for local dev against
+  # the real API, not an accidental side effect of a wildcard.
+  allowed_origins = [
+    "https://${module.frontend.distribution_domain_name}",
+    "http://localhost:5173",
+  ]
+
+  tags = local.common_tags
 }
