@@ -69,9 +69,15 @@ resource "aws_sfn_state_machine" "this" {
           FunctionName = var.agent_loop_lambda_arn
           "Payload.$"  = "$"
         }
+        # Only outcome.$ here -- fix_id is present on the awaiting_confirmation
+        # outcome but absent on routed_to_support/rejected/failed, and nothing
+        # downstream reads $.investigation.fix_id anyway (ExecuteFix threads
+        # fix_id through $.confirmation, from WaitForConfirmation's own
+        # payload, not from this state). A ResultSelector that unconditionally
+        # requires a key gone from those outcomes previously crashed the
+        # execution with an uncatchable JSONPath error on every non-fix path.
         ResultSelector = {
           "outcome.$" = "$.Payload.outcome"
-          "fix_id.$"  = "$.Payload.fix_id"
         }
         ResultPath = "$.investigation"
         Next       = "IsAwaitingConfirmation"
