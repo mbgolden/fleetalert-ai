@@ -130,10 +130,16 @@ def _reject(alert_id: str, body: dict[str, Any]) -> dict[str, Any]:
     result = reject_fix(alert_id, reason=body.get("reason"))
 
     if task_token:
-        log.info("failing Step Functions wait via SendTaskFailure")
+        # RetryWithNewFix loops the state machine back to RunInvestigation
+        # (see infra/modules/step_functions); RoutedToSupport lands it on
+        # the existing terminal RoutedToSupport success state. Either way
+        # this is a normal, expected outcome of reject_fix -- "Rejected" is
+        # reserved for a WaitForConfirmation failure we didn't cause.
+        error_name = "RetryWithNewFix" if result["outcome"] == "investigating" else "RoutedToSupport"
+        log.info("failing Step Functions wait via SendTaskFailure (%s)", error_name)
         boto3.client("stepfunctions").send_task_failure(
             taskToken=task_token,
-            error="Rejected",
+            error=error_name,
             cause=body.get("reason") or "Rejected by visitor",
         )
     return _json(200, result)

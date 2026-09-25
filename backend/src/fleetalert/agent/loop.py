@@ -7,6 +7,15 @@ exhausts MAX_LOOP_ITERATIONS. It never executes anything itself -- it only
 ever ends in "awaiting_confirmation" (whitelisted fix, human must confirm)
 or "routed_to_support" (non-whitelisted fix, or no fix reached in time).
 
+A human rejecting a proposed fix (reject_fix, below) re-triggers this same
+function rather than ending the investigation: the alert's status goes back
+to "investigating" and Step Functions loops back to RunInvestigation (see
+infra/modules/step_functions), so the model gets another pass with the
+rejected fix_id(s) named in its prompt and is expected to search the
+knowledge base for a different one. Capped at MAX_REJECTION_ROUNDS rounds
+(fleetalert.agent.guardrails) before reject_fix gives up and routes to
+support itself, so this never loops unboundedly.
+
 `execute_fix` is deliberately a separate function, not a tool the model
 calls mid-loop: in the real deployment this only runs after Step Functions'
 task-token callback fires from a human confirming in the UI, never as a
@@ -19,10 +28,15 @@ from __future__ import annotations
 
 import json
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 from fleetalert import config, repositories
-from fleetalert.agent.guardrails import MAX_LOOP_ITERATIONS, GuardrailViolation
+from fleetalert.agent.guardrails import (
+    MAX_LOOP_ITERATIONS,
+    MAX_REJECTION_ROUNDS,
+    GuardrailViolation,
+)
 from fleetalert.agent.tools import TOOL_SCHEMAS, execute_tool
 from fleetalert.logging_config import alert_logger
 from fleetalert.repositories import ConcurrentUpdateError
@@ -62,27 +76,41 @@ def run_investigation(
         log.info("duplicate investigation trigger ignored, reporting existing outcome")
         return _current_alert_outcome(alert_id)
 
+    rejected_fixes = alert.get("rejected_fixes") or []
     log.info(
-        "investigation started: alert_type=%s severity=%s machine_type=%s max_iterations=%d model=%s",
+        "investigation started: alert_type=%s severity=%s machine_type=%s max_iterations=%d model=%s rejected_fixes=%d",
         alert["alert_type"],
         alert["severity"],
         machine["machine_type"],
         max_iterations,
         model,
+        len(rejected_fixes),
     )
-    repositories.append_audit_log(alert_id, actor="agent", action="investigation_started", details={})
+    repositories.append_audit_log(
+        alert_id,
+        actor="agent",
+        action="investigation_started",
+        details={"rejected_fixes": len(rejected_fixes)},
+    )
 
     system_prompt = _build_system_prompt(machine)
-    messages: list[dict[str, Any]] = [
-        {
-            "role": "user",
-            "content": (
-                f"Investigate alert {alert_id}: {alert['alert_type']} "
-                f"(severity: {alert['severity']}) on machine {machine['name']} "
-                f"({machine['machine_type']})."
-            ),
-        }
-    ]
+    user_message = (
+        f"Investigate alert {alert_id}: {alert['alert_type']} "
+        f"(severity: {alert['severity']}) on machine {machine['name']} "
+        f"({machine['machine_type']})."
+    )
+    if rejected_fixes:
+        rejected_summary = "; ".join(
+            f"{r['fix_id']!r} (reason: {r.get('reason') or 'not given'})" for r in rejected_fixes
+        )
+        user_message += (
+            f" A human already rejected {len(rejected_fixes)} previously proposed "
+            f"fix(es): {rejected_summary}. Do not propose any of those fix_ids again -- "
+            "search the knowledge base for a different angle on this symptom and "
+            "propose an alternative fix, or call propose_fix with a non-whitelisted "
+            "fix_id (or stop calling tools) if nothing else plausible fits."
+        )
+    messages: list[dict[str, Any]] = [{"role": "user", "content": user_message}]
 
     for iteration in range(1, max_iterations + 1):
         log.debug("loop iteration %d/%d: calling model", iteration, max_iterations)
@@ -197,6 +225,13 @@ def execute_fix(alert_id: str, fix_id: str, confirmation_token: str) -> dict[str
 
 
 def reject_fix(alert_id: str, *, reason: str | None = None) -> dict[str, Any]:
+    """Rejecting a proposal re-investigates for an alternative, up to a cap.
+
+    Records the rejected fix_id and re-enters "investigating" so Step
+    Functions loops back to RunInvestigation with that history in hand
+    (see run_investigation) -- unless MAX_REJECTION_ROUNDS is already spent,
+    in which case this routes straight to support instead of looping again.
+    """
     log = alert_logger(__name__, alert_id)
     alert = repositories.get_alert(alert_id)
     if alert is None:
@@ -205,9 +240,49 @@ def reject_fix(alert_id: str, *, reason: str | None = None) -> dict[str, Any]:
         log.warning("reject rejected: status=%r is not awaiting_confirmation", alert.get("status"))
         raise GuardrailViolation(f"Alert {alert_id} is not awaiting confirmation")
 
+    rejected_fixes = [
+        *(alert.get("rejected_fixes") or []),
+        {
+            "fix_id": alert.get("proposed_fix"),
+            "reason": reason,
+            "rejected_at": datetime.now(UTC).isoformat(),
+        },
+    ]
+    repositories.append_audit_log(
+        alert_id, actor="human", action="reject",
+        details={"reason": reason, "fix_id": alert.get("proposed_fix")},
+    )
+
+    if len(rejected_fixes) > MAX_REJECTION_ROUNDS:
+        try:
+            repositories.update_alert_if_current(
+                alert_id,
+                expected_status="awaiting_confirmation",
+                status="routed_to_support",
+                rejected_fixes=rejected_fixes,
+                proposed_fix=None,
+                confirmation_token=None,
+            )
+        except ConcurrentUpdateError as exc:
+            log.warning("reject lost a race: alert already resolved or moved on")
+            raise GuardrailViolation(
+                f"Alert {alert_id} was already resolved or moved on by another request"
+            ) from exc
+        log.info("rejected by human, reason=%r -- rejection budget exhausted, routing to support", reason)
+        repositories.append_audit_log(
+            alert_id, actor="system", action="route_to_support",
+            details={"reason": "rejection_budget_exhausted"},
+        )
+        return {"outcome": "routed_to_support", "alert_id": alert_id, "reason": "rejection_budget_exhausted"}
+
     try:
         repositories.update_alert_if_current(
-            alert_id, expected_status="awaiting_confirmation", status="rejected"
+            alert_id,
+            expected_status="awaiting_confirmation",
+            status="investigating",
+            rejected_fixes=rejected_fixes,
+            proposed_fix=None,
+            confirmation_token=None,
         )
     except ConcurrentUpdateError as exc:
         log.warning("reject lost a race: alert already resolved or moved on")
@@ -215,14 +290,24 @@ def reject_fix(alert_id: str, *, reason: str | None = None) -> dict[str, Any]:
             f"Alert {alert_id} was already resolved or moved on by another request"
         ) from exc
 
-    log.info("rejected by human, reason=%r", reason)
-    repositories.append_audit_log(alert_id, actor="human", action="reject", details={"reason": reason})
-    return {"outcome": "rejected", "alert_id": alert_id}
+    log.info(
+        "rejected by human, reason=%r -- re-investigating (round %d/%d)",
+        reason, len(rejected_fixes), MAX_REJECTION_ROUNDS,
+    )
+    return {"outcome": "investigating", "alert_id": alert_id, "rejected_fixes": rejected_fixes}
 
 
 def _finalize_proposed_fix(alert_id: str, proposal: dict[str, Any]) -> dict[str, Any]:
     log = alert_logger(__name__, alert_id)
     fix_id = proposal["fix_id"]
+
+    alert = repositories.get_alert(alert_id)
+    rejected_fix_ids = {r["fix_id"] for r in (alert.get("rejected_fixes") or [])} if alert else set()
+    if fix_id in rejected_fix_ids:
+        # The model didn't take the "don't repeat a rejected fix_id" prompt
+        # instruction -- enforce it in code rather than trusting compliance.
+        log.warning("proposed fix_id=%s was already rejected -- routing to support instead", fix_id)
+        return _route_to_support(alert_id, reason="fix_already_rejected", fix_id=fix_id)
 
     if not is_whitelisted(fix_id):
         log.warning("proposed fix_id=%s is not whitelisted -- routing to support", fix_id)

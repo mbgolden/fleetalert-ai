@@ -184,7 +184,9 @@ def test_confirm_route_rejects_wrong_token(
     assert fake_sfn.task_successes == []
 
 
-def test_reject_route_sends_task_failure(dynamodb_tables: None, fake_sfn: _FakeStepFunctionsClient) -> None:
+def test_reject_route_loops_back_via_retry_with_new_fix(
+    dynamodb_tables: None, fake_sfn: _FakeStepFunctionsClient
+) -> None:
     _seed_alert(
         "ALERT-7",
         status="awaiting_confirmation",
@@ -203,14 +205,48 @@ def test_reject_route_sends_task_failure(dynamodb_tables: None, fake_sfn: _FakeS
     )
 
     assert resp["statusCode"] == 200
-    assert json.loads(resp["body"]) == {"outcome": "rejected", "alert_id": "ALERT-7"}
-    assert get_alert("ALERT-7")["status"] == "rejected"  # type: ignore[index]
+    body = json.loads(resp["body"])
+    assert body["outcome"] == "investigating"
+    assert get_alert("ALERT-7")["status"] == "investigating"  # type: ignore[index]
 
     assert len(fake_sfn.task_failures) == 1
     call = fake_sfn.task_failures[0]
     assert call["taskToken"] == "sfn-token-xyz"
-    assert call["error"] == "Rejected"
+    assert call["error"] == "RetryWithNewFix"
     assert call["cause"] == "visitor rejected"
+
+
+def test_reject_route_sends_routed_to_support_once_budget_exhausted(
+    dynamodb_tables: None, fake_sfn: _FakeStepFunctionsClient
+) -> None:
+    _seed_alert(
+        "ALERT-7B",
+        status="awaiting_confirmation",
+        proposed_fix="send_diagnostic_reset",
+        confirmation_token="tok-abc",
+        step_functions_task_token="sfn-token-xyz",
+        rejected_fixes=[
+            {"fix_id": "send_diagnostic_reset", "reason": "no", "rejected_at": "2026-01-01T00:00:00+00:00"},
+            {"fix_id": "restart_sensor", "reason": "no", "rejected_at": "2026-01-01T00:00:00+00:00"},
+        ],
+    )
+
+    resp = api_handler.handler(
+        {
+            "routeKey": "POST /demo/alerts/{alert_id}/reject",
+            "pathParameters": {"alert_id": "ALERT-7B"},
+            "body": json.dumps({"reason": "still wrong"}),
+        },
+        None,
+    )
+
+    assert resp["statusCode"] == 200
+    body = json.loads(resp["body"])
+    assert body["outcome"] == "routed_to_support"
+    assert get_alert("ALERT-7B")["status"] == "routed_to_support"  # type: ignore[index]
+
+    assert len(fake_sfn.task_failures) == 1
+    assert fake_sfn.task_failures[0]["error"] == "RoutedToSupport"
 
 
 def test_audit_route(dynamodb_tables: None) -> None:

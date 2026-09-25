@@ -121,7 +121,22 @@ resource "aws_sfn_state_machine" "this" {
         }
         ResultPath = "$.confirmation"
         Next       = "ExecuteFix"
+        # A rejection isn't a WaitForConfirmation failure in the ordinary
+        # sense -- api_handler._reject calls SendTaskFailure deliberately,
+        # with the error name telling us which of reject_fix's two normal
+        # outcomes it was (see fleetalert.agent.loop.reject_fix). Order
+        # matters: the first matching Catch wins, so both named errors are
+        # listed before the States.ALL fallback, which is now reserved for
+        # a genuine, unexpected wait failure.
         Catch = [
+          {
+            ErrorEquals = ["RetryWithNewFix"]
+            Next        = "RunInvestigation"
+          },
+          {
+            ErrorEquals = ["RoutedToSupport"]
+            Next        = "RoutedToSupport"
+          },
           {
             ErrorEquals = ["States.ALL"]
             Next        = "Rejected"

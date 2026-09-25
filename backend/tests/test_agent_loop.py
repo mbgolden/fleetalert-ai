@@ -244,7 +244,7 @@ def test_execute_fix_requires_awaiting_confirmation_status(dynamodb_tables: None
         execute_fix("ALERT-6", "send_diagnostic_reset", "any-token")
 
 
-def test_reject_fix_ends_flow_without_executing(dynamodb_tables: None) -> None:
+def test_reject_fix_reinvestigates_instead_of_ending_the_flow(dynamodb_tables: None) -> None:
     _seed(alert_id="ALERT-7", machine_id="M-1002", alert_type="temperature_drift")
     update_alert(
         "ALERT-7",
@@ -255,12 +255,97 @@ def test_reject_fix_ends_flow_without_executing(dynamodb_tables: None) -> None:
 
     result = reject_fix("ALERT-7", reason="visitor rejected")
 
-    assert result == {"outcome": "rejected", "alert_id": "ALERT-7"}
-    assert get_alert("ALERT-7")["status"] == "rejected"  # type: ignore[index]
+    assert result["outcome"] == "investigating"
+    assert result["alert_id"] == "ALERT-7"
+    assert [r["fix_id"] for r in result["rejected_fixes"]] == ["send_diagnostic_reset"]
+
+    alert = get_alert("ALERT-7")
+    assert alert is not None
+    assert alert["status"] == "investigating"
+    assert alert["proposed_fix"] is None
+    assert alert["confirmation_token"] is None
+    assert [r["fix_id"] for r in alert["rejected_fixes"]] == ["send_diagnostic_reset"]
+    assert alert["rejected_fixes"][0]["reason"] == "visitor rejected"
 
     last_action = get_audit_trail("ALERT-7")[-1]
     assert last_action["actor"] == "human"
     assert last_action["action"] == "reject"
 
+    # The old proposal's token is dead -- execute_fix can't be replayed against it.
     with pytest.raises(GuardrailViolation):
         execute_fix("ALERT-7", "send_diagnostic_reset", "tok")
+
+    # A follow-up investigation (as Step Functions' RunInvestigation loop-back
+    # would trigger) sees the rejection history and proposes something else.
+    client = FakeAnthropicClient(
+        [
+            response(
+                tool_use_block(
+                    "propose_fix",
+                    {"fix_id": "restart_sensor", "description": "Different root cause.", "confidence": 0.7},
+                )
+            )
+        ]
+    )
+    result = run_investigation("ALERT-7", client)
+    assert result["outcome"] == "awaiting_confirmation"
+    assert result["fix_id"] == "restart_sensor"
+
+
+def test_reject_fix_exhausts_budget_and_routes_to_support(dynamodb_tables: None) -> None:
+    _seed(alert_id="ALERT-7B", machine_id="M-1002", alert_type="temperature_drift")
+    update_alert("ALERT-7B", status="awaiting_confirmation", proposed_fix="send_diagnostic_reset")
+
+    # MAX_REJECTION_ROUNDS=2 -- the 1st and 2nd rejects loop back, the 3rd exhausts the budget.
+    for fix_id in ["send_diagnostic_reset", "restart_sensor"]:
+        update_alert("ALERT-7B", status="awaiting_confirmation", proposed_fix=fix_id)
+        result = reject_fix("ALERT-7B", reason="still wrong")
+        assert result["outcome"] == "investigating"
+
+    update_alert("ALERT-7B", status="awaiting_confirmation", proposed_fix="schedule_service_visit")
+    result = reject_fix("ALERT-7B", reason="still wrong")
+
+    assert result == {
+        "outcome": "routed_to_support",
+        "alert_id": "ALERT-7B",
+        "reason": "rejection_budget_exhausted",
+    }
+    alert = get_alert("ALERT-7B")
+    assert alert is not None
+    assert alert["status"] == "routed_to_support"
+    assert len(alert["rejected_fixes"]) == 3
+
+    last_action = get_audit_trail("ALERT-7B")[-1]
+    assert last_action["action"] == "route_to_support"
+    assert last_action["details"]["reason"] == "rejection_budget_exhausted"
+
+
+def test_run_investigation_refuses_to_repropose_an_already_rejected_fix(dynamodb_tables: None) -> None:
+    """Defense in depth: even if the model ignores the prompt's instruction
+    not to repeat a rejected fix_id, the code enforces it independently.
+    """
+    _seed(alert_id="ALERT-7C", machine_id="M-1002", alert_type="temperature_drift")
+    update_alert(
+        "ALERT-7C",
+        status="investigating",
+        rejected_fixes=[{"fix_id": "send_diagnostic_reset", "reason": "nope", "rejected_at": "2026-01-01T00:00:00+00:00"}],
+    )
+
+    client = FakeAnthropicClient(
+        [
+            response(
+                tool_use_block(
+                    "propose_fix",
+                    {"fix_id": "send_diagnostic_reset", "description": "...", "confidence": 0.5},
+                )
+            )
+        ]
+    )
+    result = run_investigation("ALERT-7C", client)
+
+    assert result == {
+        "outcome": "routed_to_support",
+        "alert_id": "ALERT-7C",
+        "reason": "fix_already_rejected",
+    }
+    assert get_alert("ALERT-7C")["status"] == "routed_to_support"  # type: ignore[index]
