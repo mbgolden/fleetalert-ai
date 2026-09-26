@@ -25,3 +25,13 @@ output "frontend_bucket_name" {
 output "frontend_distribution_id" {
   value = module.frontend.distribution_id
 }
+
+output "acm_validation_records" {
+  description = "Create these in DNS so ACM can validate the custom domain."
+  value       = module.frontend.certificate_validation_records
+}
+
+output "frontend_cname_target" {
+  description = "Point the custom domain's CNAME here once attached."
+  value       = module.frontend.distribution_domain_name
+}

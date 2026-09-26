@@ -39,10 +39,13 @@ module "api_gateway" {
   # See docs/decisions/ADR-0007-defer-cors-until-final-domains.md --
   # localhost is a deliberate, explicit addition for local dev against
   # the real API, not an accidental side effect of a wildcard.
-  allowed_origins = [
-    "https://${module.frontend.distribution_domain_name}",
-    "http://localhost:5173",
-  ]
+  allowed_origins = concat(
+    [
+      "https://${module.frontend.distribution_domain_name}",
+      "http://localhost:5173",
+    ],
+    var.frontend_custom_domain != null ? ["https://${var.frontend_custom_domain}"] : [],
+  )
 
   tags = local.common_tags
 }

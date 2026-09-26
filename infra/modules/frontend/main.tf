@@ -1,13 +1,17 @@
 # React SPA hosting: a private S3 bucket, readable only by CloudFront via
 # Origin Access Control (OAC) -- not a public bucket, no legacy OAI. No
-# custom domain / ACM cert (see infra/README.md -- single demo env, keep
-# it simple): this uses CloudFront's own default *.cloudfront.net domain.
+# custom domain by default: this uses CloudFront's own default
+# *.cloudfront.net domain unless var.attach_custom_domain is set.
 #
 # The 403/404 -> /index.html rewrite below is what makes client-side
 # routing (react-router) work on a hard refresh of e.g. /alerts/ALERT-1 --
 # S3 has no such route, so without this CloudFront would just show S3's
 # raw AccessDenied/NoSuchKey response instead of letting the SPA's own
 # router handle the path.
+#
+# Optional custom domain (see ADR-0009): var.custom_domain requests an ACM
+# cert; var.attach_custom_domain (a second apply, after the validation
+# CNAME exists in DNS) attaches it to the distribution as an alias.
 
 resource "aws_s3_bucket" "site" {
   bucket = "${var.name}-frontend"
@@ -39,8 +43,28 @@ resource "aws_cloudfront_origin_access_control" "site" {
   signing_protocol                  = "sigv4"
 }
 
+resource "aws_acm_certificate" "site" {
+  count             = var.custom_domain != null ? 1 : 0
+  domain_name       = var.custom_domain
+  validation_method = "DNS"
+  tags              = var.tags
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# Blocks until the validation CNAME is visible in DNS, so it only exists
+# once attach_custom_domain is flipped on -- otherwise a first apply would
+# hang for up to 45 minutes waiting on a record nobody has added yet.
+resource "aws_acm_certificate_validation" "site" {
+  count           = var.attach_custom_domain ? 1 : 0
+  certificate_arn = aws_acm_certificate.site[0].arn
+}
+
 resource "aws_cloudfront_distribution" "site" {
   enabled             = true
+  aliases             = var.attach_custom_domain ? [var.custom_domain] : []
   default_root_object = "index.html"
   price_class         = "PriceClass_100" # cheapest tier -- US/Canada/Europe only, fine for a demo
   tags                = var.tags
@@ -85,7 +109,10 @@ resource "aws_cloudfront_distribution" "site" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
+    cloudfront_default_certificate = var.attach_custom_domain ? null : true
+    acm_certificate_arn            = var.attach_custom_domain ? aws_acm_certificate_validation.site[0].certificate_arn : null
+    ssl_support_method             = var.attach_custom_domain ? "sni-only" : null
+    minimum_protocol_version       = var.attach_custom_domain ? "TLSv1.2_2021" : null
   }
 }
 
