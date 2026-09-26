@@ -27,6 +27,7 @@ export default function AlertDetail() {
   const [error, setError] = useState<string | null>(null);
   const [actionPending, setActionPending] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const stopPolling = useCallback(() => {
     if (pollRef.current !== null) {
@@ -56,6 +57,15 @@ export default function AlertDetail() {
     void refresh();
     return stopPolling;
   }, [refresh, stopPolling]);
+
+  // Follows new trace entries and the eventual proposed-fix/outcome box
+  // down as they appear, rather than making the visitor scroll to find
+  // them -- keyed on trail.length (not the trail array itself, which is a
+  // fresh reference every poll tick) so this only fires on real new
+  // activity, not every 2s refresh.
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [trail.length, status?.status]);
 
   if (!alertId) return null;
 
@@ -93,9 +103,26 @@ export default function AlertDetail() {
       {error && <p className="error">{error}</p>}
 
       {status && (
-        <>
-          <p className={`status-pill status-${status.status}`}>{status.status.replaceAll("_", " ")}</p>
+        <p className={`status-pill status-${status.status}`}>{status.status.replaceAll("_", " ")}</p>
+      )}
 
+      <h2>Investigation trace</h2>
+      <ol className="timeline">
+        {trail.map((entry) => (
+          <li key={entry.log_id} className={`timeline-entry actor-${entry.actor}`}>
+            <span className="timeline-time">{new Date(entry.timestamp).toLocaleTimeString()}</span>
+            <span className="timeline-actor">{entry.actor}</span>
+            <span className="timeline-action">{entry.action.replaceAll("_", " ")}</span>
+            {Object.keys(entry.details).length > 0 && (
+              <pre className="timeline-details">{JSON.stringify(entry.details, null, 2)}</pre>
+            )}
+          </li>
+        ))}
+        {trail.length === 0 && <li className="timeline-empty">No activity yet.</li>}
+      </ol>
+
+      {status && (
+        <>
           {status.status === "open" && (
             <button disabled={actionPending} onClick={handleInvestigate}>
               Investigate
@@ -125,26 +152,13 @@ export default function AlertDetail() {
           )}
           {status.status === "failed" && (
             <p className="outcome rejected">
-              Investigation failed after retries. See the trace below, or check CloudWatch.
+              Investigation failed after retries. See the trace above, or check CloudWatch.
             </p>
           )}
         </>
       )}
 
-      <h2>Investigation trace</h2>
-      <ol className="timeline">
-        {trail.map((entry) => (
-          <li key={entry.log_id} className={`timeline-entry actor-${entry.actor}`}>
-            <span className="timeline-time">{new Date(entry.timestamp).toLocaleTimeString()}</span>
-            <span className="timeline-actor">{entry.actor}</span>
-            <span className="timeline-action">{entry.action.replaceAll("_", " ")}</span>
-            {Object.keys(entry.details).length > 0 && (
-              <pre className="timeline-details">{JSON.stringify(entry.details, null, 2)}</pre>
-            )}
-          </li>
-        ))}
-        {trail.length === 0 && <li className="timeline-empty">No activity yet.</li>}
-      </ol>
+      <div ref={bottomRef} />
     </div>
   );
 }
