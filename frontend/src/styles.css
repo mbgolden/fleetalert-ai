@@ -68,11 +68,17 @@ a {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
-  transition: border-color 0.15s ease;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .alert-card:hover {
   border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 .alert-card-body {
@@ -124,20 +130,56 @@ button {
   color: white;
   border: none;
   border-radius: 8px;
-  padding: 0.6rem 1.2rem;
-  font-size: 0.95rem;
+  padding: 0.75rem 1.6rem;
+  font-size: 1rem;
+  font-weight: 600;
   cursor: pointer;
   margin-top: 1rem;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.18) inset,
+    0 4px 14px color-mix(in srgb, var(--accent) 45%, transparent);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    filter 0.12s ease;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  filter: brightness(1.12);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.22) inset,
+    0 8px 20px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 3px;
 }
 
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 button.reject {
   background: var(--high);
   margin-left: 0.75rem;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.18) inset,
+    0 4px 14px color-mix(in srgb, var(--high) 45%, transparent);
+}
+
+button.reject:hover:not(:disabled) {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.22) inset,
+    0 8px 20px color-mix(in srgb, var(--high) 55%, transparent);
 }
 
 button.reset-button {
@@ -146,12 +188,17 @@ button.reset-button {
   border: 1px solid var(--border);
   padding: 0.5rem 1rem;
   font-size: 0.85rem;
+  font-weight: 500;
   flex-shrink: 0;
+  box-shadow: none;
 }
 
 button.reset-button:hover:not(:disabled) {
   color: var(--text);
   border-color: var(--text-dim);
+  transform: none;
+  filter: none;
+  box-shadow: none;
 }
 
 .proposed-fix {
