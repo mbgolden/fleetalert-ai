@@ -10,6 +10,8 @@ has to handle that conflict rather than the KB quietly resolving it.
 
 from typing import Any
 
+from fleetalert import repositories
+
 SEED_MACHINES: list[dict[str, Any]] = [
     {
         "machine_id": "M-1001",
@@ -138,3 +140,22 @@ SEED_ALERTS: list[dict[str, Any]] = [
         "created_at": "2026-09-17T08:20:00+00:00",
     },
 ]
+
+
+def reseed_demo_data() -> None:
+    """Restores machines/KB/alerts to their default seed state.
+
+    Shared by scripts/seed_demo_data.py (run by hand against real AWS) and
+    the demo API's own /demo/reset route (the frontend's "Reset Alerts"
+    button) -- same safe-to-rerun put_item semantics either way. Also wipes
+    each seeded alert's audit trail, since a stale trace from a previous
+    investigation would contradict a freshly "open" alert on the UI's
+    Investigation trace panel.
+    """
+    for machine in SEED_MACHINES:
+        repositories.put_machine(machine)
+    for entry in SEED_KNOWLEDGE_BASE:
+        repositories.put_knowledge_base_entry(entry)
+    for alert in SEED_ALERTS:
+        repositories.clear_audit_trail(alert["alert_id"])
+        repositories.create_alert(alert)

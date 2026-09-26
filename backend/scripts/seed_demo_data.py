@@ -12,22 +12,12 @@ primary key rather than erroring on a duplicate.
 
 from __future__ import annotations
 
-from fleetalert.repositories import create_alert, put_knowledge_base_entry, put_machine
-from fleetalert.seed_data import SEED_ALERTS, SEED_KNOWLEDGE_BASE, SEED_MACHINES
+from fleetalert.seed_data import reseed_demo_data
 
 
 def main() -> None:
-    for machine in SEED_MACHINES:
-        put_machine(machine)
-        print(f"put machine {machine['machine_id']}")
-
-    for entry in SEED_KNOWLEDGE_BASE:
-        put_knowledge_base_entry(entry)
-        print(f"put knowledge base entry {entry['kb_id']}")
-
-    for alert in SEED_ALERTS:
-        create_alert(alert)
-        print(f"put alert {alert['alert_id']}")
+    reseed_demo_data()
+    print("demo data reseeded")
 
 
 if __name__ == "__main__":

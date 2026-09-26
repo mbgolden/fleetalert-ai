@@ -262,6 +262,25 @@ def test_audit_route(dynamodb_tables: None) -> None:
     assert json.loads(resp["body"]) == {"audit_trail": []}
 
 
+def test_reset_route_restores_default_state_and_clears_trail(dynamodb_tables: None) -> None:
+    from fleetalert.repositories import append_audit_log, get_alert, get_audit_trail
+    from fleetalert.seed_data import SEED_ALERTS
+
+    _seed_alert(SEED_ALERTS[0]["alert_id"], status="failed", rejected_fixes=[{"fix_id": "x"}])
+    append_audit_log(SEED_ALERTS[0]["alert_id"], actor="agent", action="stale_entry", details={})
+
+    resp = api_handler.handler({"routeKey": "POST /demo/reset"}, None)
+
+    assert resp["statusCode"] == 200
+    assert json.loads(resp["body"]) == {"outcome": "reset"}
+
+    alert = get_alert(SEED_ALERTS[0]["alert_id"])
+    assert alert is not None
+    assert alert["status"] == "open"
+    assert "rejected_fixes" not in alert
+    assert get_audit_trail(SEED_ALERTS[0]["alert_id"]) == []
+
+
 def test_unknown_route_returns_404(dynamodb_tables: None) -> None:
     resp = api_handler.handler({"routeKey": "DELETE /demo/alerts"}, None)
     assert resp["statusCode"] == 404

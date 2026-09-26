@@ -92,3 +92,7 @@ export function rejectFix(alertId: string, reason?: string): Promise<{ alert_id:
 export function getAuditTrail(alertId: string): Promise<{ audit_trail: AuditLogEntry[] }> {
   return request(`/demo/alerts/${alertId}/audit`);
 }
+
+export function resetDemoData(): Promise<{ outcome: string }> {
+  return request("/demo/reset", { method: "POST" });
+}

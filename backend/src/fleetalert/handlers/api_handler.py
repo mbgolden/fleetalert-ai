@@ -20,6 +20,7 @@ from fleetalert import config, repositories
 from fleetalert.agent.guardrails import GuardrailViolation
 from fleetalert.agent.loop import confirm_fix, reject_fix
 from fleetalert.logging_config import alert_logger, configure_logging
+from fleetalert.seed_data import reseed_demo_data
 
 configure_logging()
 _logger = logging.getLogger(__name__)
@@ -49,6 +50,9 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
 
         if route_key == "GET /demo/alerts/{alert_id}/audit":
             return _json(200, {"audit_trail": repositories.get_audit_trail(path_params["alert_id"])})
+
+        if route_key == "POST /demo/reset":
+            return _reset_demo_data()
     except GuardrailViolation as exc:
         _logger.warning("route %s rejected by guardrail: %s", route_key, exc)
         return _json(403, {"error": str(exc)})
@@ -143,6 +147,22 @@ def _reject(alert_id: str, body: dict[str, Any]) -> dict[str, Any]:
             cause=body.get("reason") or "Rejected by visitor",
         )
     return _json(200, result)
+
+
+def _reset_demo_data() -> dict[str, Any]:
+    """Restores the fixed demo scenarios to their default state.
+
+    Just data cleanup, not an agent action -- doesn't touch Step Functions
+    or Claude at all, so there's no in-flight execution to cancel and
+    nothing for the fixed action whitelist to gate. A concurrently-running
+    investigation on a reset alert can still race this (put_item, not a
+    conditional write), same as the existing seed script always could --
+    acceptable for a public demo reset button, not worth the extra
+    complexity to guard against here.
+    """
+    _logger.info("resetting demo data to defaults")
+    reseed_demo_data()
+    return _json(200, {"outcome": "reset"})
 
 
 def _json(status_code: int, payload: dict[str, Any]) -> dict[str, Any]:

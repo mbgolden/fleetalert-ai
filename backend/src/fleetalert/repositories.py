@@ -280,3 +280,10 @@ def get_audit_trail(alert_id: str) -> list[dict[str, Any]]:
     resp = table.query(KeyConditionExpression=Key("alert_id").eq(alert_id))
     result: list[dict[str, Any]] = resp.get("Items", [])
     return result
+
+
+def clear_audit_trail(alert_id: str) -> None:
+    """Deletes every audit log entry for one alert -- used by the demo reset."""
+    table = get_dynamodb_resource().Table(AUDIT_LOG_TABLE)
+    for item in get_audit_trail(alert_id):
+        table.delete_item(Key={"alert_id": alert_id, "timestamp": item["timestamp"]})

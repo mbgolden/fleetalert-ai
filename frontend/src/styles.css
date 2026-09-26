@@ -28,6 +28,10 @@ a {
 }
 
 .app-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
   padding: 1.5rem 2rem;
   border-bottom: 1px solid var(--border);
 }
@@ -134,6 +138,20 @@ button:disabled {
 button.reject {
   background: var(--high);
   margin-left: 0.75rem;
+}
+
+button.reset-button {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+button.reset-button:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--text-dim);
 }
 
 .proposed-fix {
