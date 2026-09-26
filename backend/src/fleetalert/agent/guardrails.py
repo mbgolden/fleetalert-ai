@@ -8,11 +8,11 @@ exception-shaped guardrails referenced from fleetalert.agent.loop.
 MAX_LOOP_ITERATIONS = 6
 
 # How many times a rejected proposal triggers another RAG-backed
-# re-investigation before giving up and routing to support. 2 rounds means
-# up to 3 total proposed fixes (the original, plus 2 alternatives) -- enough
-# to try a genuinely different angle without burning unbounded Claude calls
-# on a demo alert someone keeps rejecting.
-MAX_REJECTION_ROUNDS = 2
+# re-investigation before giving up and routing to support. 1 round means
+# up to 2 total proposed fixes (the original, plus one alternative) -- for
+# this demo, a single reject-and-retry is enough to show the loop without
+# letting a visitor bounce a fix back and forth indefinitely.
+MAX_REJECTION_ROUNDS = 1
 
 
 class GuardrailViolation(Exception):

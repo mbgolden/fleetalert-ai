@@ -296,13 +296,11 @@ def test_reject_fix_exhausts_budget_and_routes_to_support(dynamodb_tables: None)
     _seed(alert_id="ALERT-7B", machine_id="M-1002", alert_type="temperature_drift")
     update_alert("ALERT-7B", status="awaiting_confirmation", proposed_fix="send_diagnostic_reset")
 
-    # MAX_REJECTION_ROUNDS=2 -- the 1st and 2nd rejects loop back, the 3rd exhausts the budget.
-    for fix_id in ["send_diagnostic_reset", "restart_sensor"]:
-        update_alert("ALERT-7B", status="awaiting_confirmation", proposed_fix=fix_id)
-        result = reject_fix("ALERT-7B", reason="still wrong")
-        assert result["outcome"] == "investigating"
+    # MAX_REJECTION_ROUNDS=1 -- the 1st reject loops back, the 2nd exhausts the budget.
+    result = reject_fix("ALERT-7B", reason="still wrong")
+    assert result["outcome"] == "investigating"
 
-    update_alert("ALERT-7B", status="awaiting_confirmation", proposed_fix="schedule_service_visit")
+    update_alert("ALERT-7B", status="awaiting_confirmation", proposed_fix="restart_sensor")
     result = reject_fix("ALERT-7B", reason="still wrong")
 
     assert result == {
@@ -313,7 +311,7 @@ def test_reject_fix_exhausts_budget_and_routes_to_support(dynamodb_tables: None)
     alert = get_alert("ALERT-7B")
     assert alert is not None
     assert alert["status"] == "routed_to_support"
-    assert len(alert["rejected_fixes"]) == 3
+    assert len(alert["rejected_fixes"]) == 2
 
     last_action = get_audit_trail("ALERT-7B")[-1]
     assert last_action["action"] == "route_to_support"

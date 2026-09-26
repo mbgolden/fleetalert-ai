@@ -128,10 +128,21 @@ resource "aws_sfn_state_machine" "this" {
         # matters: the first matching Catch wins, so both named errors are
         # listed before the States.ALL fallback, which is now reserved for
         # a genuine, unexpected wait failure.
+        #
+        # ResultPath = null on the RetryWithNewFix branch specifically:
+        # a Catch's default ResultPath ("$") replaces the ENTIRE state
+        # input with {Error, Cause}, discarding $.alert_id before it ever
+        # reaches RunInvestigation's "Payload.$": "$" -- the Lambda handler
+        # then threw KeyError on event["alert_id"] *before* its own
+        # try/except, so _mark_failed never ran and the alert sat at
+        # "investigating" forever while Step Functions silently retried
+        # the same broken input. null discards the error info instead and
+        # keeps the original input intact.
         Catch = [
           {
             ErrorEquals = ["RetryWithNewFix"]
             Next        = "RunInvestigation"
+            ResultPath  = null
           },
           {
             ErrorEquals = ["RoutedToSupport"]

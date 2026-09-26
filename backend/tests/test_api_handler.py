@@ -225,9 +225,9 @@ def test_reject_route_sends_routed_to_support_once_budget_exhausted(
         proposed_fix="send_diagnostic_reset",
         confirmation_token="tok-abc",
         step_functions_task_token="sfn-token-xyz",
+        # MAX_REJECTION_ROUNDS=1 -- one prior rejection already spent the budget.
         rejected_fixes=[
             {"fix_id": "send_diagnostic_reset", "reason": "no", "rejected_at": "2026-01-01T00:00:00+00:00"},
-            {"fix_id": "restart_sensor", "reason": "no", "rejected_at": "2026-01-01T00:00:00+00:00"},
         ],
     )
 
