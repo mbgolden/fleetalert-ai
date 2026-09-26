@@ -15,5 +15,5 @@ variable "frontend_custom_domain" {
 
 variable "frontend_attach_custom_domain" {
   type    = bool
-  default = false
+  default = true
 }
