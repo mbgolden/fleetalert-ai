@@ -121,11 +121,21 @@ def execute_tool(
         return {"service_history": history}
 
     if name == "propose_fix":
-        # The schema marks fix_id required, but the model can still omit it;
-        # report that back as a tool error it can retry rather than raising.
+        # The schema marks all three fields required, but the model can still
+        # omit or mangle them; report that back as a tool error it can retry
+        # rather than raising or storing a half-empty proposal.
         fix_id = tool_input.get("fix_id")
+        description = tool_input.get("description")
+        confidence = tool_input.get("confidence")
+        problems = []
         if not isinstance(fix_id, str) or not fix_id:
-            return {"error": "propose_fix requires a non-empty string fix_id; call it again with one."}
+            problems.append("fix_id (non-empty string)")
+        if not isinstance(description, str) or not description.strip():
+            problems.append("description (root cause summary and rationale)")
+        if isinstance(confidence, bool) or not isinstance(confidence, int | float) or not 0 <= confidence <= 1:
+            problems.append("confidence (number from 0 to 1)")
+        if problems:
+            return {"error": f"propose_fix is missing or has invalid: {', '.join(problems)}. Call it again with all three fields."}
         return {"received": True, "fix_id": fix_id}
 
     raise ValueError(f"Unknown tool: {name}")

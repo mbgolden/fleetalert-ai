@@ -116,7 +116,7 @@ def run_investigation(
         log.debug("loop iteration %d/%d: calling model", iteration, max_iterations)
         response = client.messages.create(
             model=model,
-            max_tokens=1024,
+            max_tokens=2048,
             system=system_prompt,
             tools=TOOL_SCHEMAS,
             messages=messages,

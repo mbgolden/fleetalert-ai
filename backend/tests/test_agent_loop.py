@@ -393,3 +393,29 @@ def test_malformed_tool_call_does_not_crash_the_loop(dynamodb_tables: None) -> N
     result = run_investigation("ALERT-11", client)
 
     assert result["outcome"] == "awaiting_confirmation"
+
+
+def test_propose_fix_missing_description_or_confidence_is_retried(dynamodb_tables: None) -> None:
+    """A proposal with only fix_id (seen live) must not reach the UI half-empty."""
+    _seed(alert_id="ALERT-12", machine_id="M-1002", alert_type="temperature_drift")
+
+    client = FakeAnthropicClient(
+        [
+            response(tool_use_block("propose_fix", {"fix_id": "restart_sensor"}, "t1")),
+            response(
+                tool_use_block(
+                    "propose_fix",
+                    {"fix_id": "restart_sensor", "description": "full", "confidence": 0.8},
+                    "t2",
+                )
+            ),
+        ]
+    )
+
+    result = run_investigation("ALERT-12", client)
+
+    assert result["outcome"] == "awaiting_confirmation"
+    alert = get_alert("ALERT-12")
+    assert alert is not None
+    assert alert["root_cause_summary"] == "full"
+    assert float(alert["confidence"]) == 0.8
