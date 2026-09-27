@@ -136,11 +136,23 @@ def run_investigation(
             repositories.append_audit_log(
                 alert_id, actor="agent", action=block.name, details={"input": block.input}
             )
-            result = execute_tool(block.name, block.input, alert=alert, machine=machine)
-            tool_results.append(
-                {"type": "tool_result", "tool_use_id": block.id, "content": json.dumps(result)}
-            )
-            if block.name == "propose_fix":
+            try:
+                result = execute_tool(block.name, block.input, alert=alert, machine=machine)
+            except (KeyError, TypeError, ValueError) as exc:
+                # Malformed or unknown tool call from the model -- feed it back
+                # as a tool error instead of crashing the whole investigation.
+                result = {"error": f"Invalid {block.name} call: {exc!r}"}
+            is_error = "error" in result
+            tool_result: dict[str, Any] = {
+                "type": "tool_result",
+                "tool_use_id": block.id,
+                "content": json.dumps(result),
+            }
+            if is_error:
+                tool_result["is_error"] = True
+                log.warning("iteration %d/%d: tool %s returned an error: %s", iteration, max_iterations, block.name, result["error"])
+            tool_results.append(tool_result)
+            if block.name == "propose_fix" and not is_error:
                 propose_fix_input = block.input
 
         messages.append({"role": "user", "content": tool_results})

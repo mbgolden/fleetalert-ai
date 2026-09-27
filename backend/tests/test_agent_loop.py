@@ -347,3 +347,49 @@ def test_run_investigation_refuses_to_repropose_an_already_rejected_fix(dynamodb
         "reason": "fix_already_rejected",
     }
     assert get_alert("ALERT-7C")["status"] == "routed_to_support"  # type: ignore[index]
+
+
+def test_propose_fix_without_fix_id_is_reported_to_the_model_not_raised(dynamodb_tables: None) -> None:
+    """The model can omit a schema-required field; that must come back as a
+    tool error it can correct, not crash the run (seen live on ALERT-1003).
+    """
+    _seed(alert_id="ALERT-10", machine_id="M-1002", alert_type="temperature_drift")
+
+    client = FakeAnthropicClient(
+        [
+            response(tool_use_block("propose_fix", {"description": "oops", "confidence": 0.5}, "t1")),
+            response(
+                tool_use_block(
+                    "propose_fix",
+                    {"fix_id": "restart_sensor", "description": "second try", "confidence": 0.6},
+                    "t2",
+                )
+            ),
+        ]
+    )
+
+    result = run_investigation("ALERT-10", client)
+
+    assert result["outcome"] == "awaiting_confirmation"
+    assert result["fix_id"] == "restart_sensor"
+
+
+def test_malformed_tool_call_does_not_crash_the_loop(dynamodb_tables: None) -> None:
+    _seed(alert_id="ALERT-11", machine_id="M-1002", alert_type="temperature_drift")
+
+    client = FakeAnthropicClient(
+        [
+            response(tool_use_block("get_telemetry_snapshot", {}, "t1")),  # missing window_minutes
+            response(
+                tool_use_block(
+                    "propose_fix",
+                    {"fix_id": "restart_sensor", "description": "ok", "confidence": 0.7},
+                    "t2",
+                )
+            ),
+        ]
+    )
+
+    result = run_investigation("ALERT-11", client)
+
+    assert result["outcome"] == "awaiting_confirmation"

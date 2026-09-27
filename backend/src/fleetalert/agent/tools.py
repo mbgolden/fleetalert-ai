@@ -121,6 +121,11 @@ def execute_tool(
         return {"service_history": history}
 
     if name == "propose_fix":
-        return {"received": True, "fix_id": tool_input["fix_id"]}
+        # The schema marks fix_id required, but the model can still omit it;
+        # report that back as a tool error it can retry rather than raising.
+        fix_id = tool_input.get("fix_id")
+        if not isinstance(fix_id, str) or not fix_id:
+            return {"error": "propose_fix requires a non-empty string fix_id; call it again with one."}
+        return {"received": True, "fix_id": fix_id}
 
     raise ValueError(f"Unknown tool: {name}")
