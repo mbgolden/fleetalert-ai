@@ -20,6 +20,30 @@ export default function AlertList() {
 
   return (
     <div className="alert-list">
+      <section className="project-overview">
+        <p className="overview-kicker">About this demo</p>
+        <p>
+          FleetAlert AI is an agentic investigation system for fleet-maintenance
+          alerts. Claude reasons over telemetry and a knowledge base (RAG),
+          then proposes a fix — a human must confirm before anything executes,
+          enforced structurally by a Step Functions task-token callback, not
+          just prompted.
+        </p>
+        <ul className="overview-points">
+          <li>Only 3 whitelisted actions can ever run, checked twice</li>
+          <li>A rejected fix triggers one more RAG-backed retry before escalating to a human</li>
+          <li>Every step runs through Step Functions and is written to an audit log</li>
+        </ul>
+        <a
+          href="https://10finger.dev/project/fleetalert-ai"
+          target="_blank"
+          rel="noreferrer"
+          className="overview-link"
+        >
+          Read the full architecture &amp; guardrails &rarr;
+        </a>
+      </section>
+
       <h1>Demo Alerts</h1>
       <p>Pick one of the pre-seeded scenarios below to investigate.</p>
       <ul>
