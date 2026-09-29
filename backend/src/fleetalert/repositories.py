@@ -6,6 +6,7 @@ this is the moto/local-dev equivalent of what Terraform provisions in AWS.
 
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -115,6 +116,13 @@ def put_telemetry_reading(
     )
 
 
+def put_telemetry_readings(readings: list[dict[str, Any]]) -> None:
+    """Bulk version of put_telemetry_reading, for seeding."""
+    with get_dynamodb_resource().Table(TELEMETRY_TABLE).batch_writer() as batch:
+        for reading in readings:
+            batch.put_item(Item=_dynamo_safe(reading))
+
+
 def get_telemetry_snapshot(machine_id: str, start: str, end: str) -> list[dict[str, Any]]:
     table = get_dynamodb_resource().Table(TELEMETRY_TABLE)
     resp = table.query(
@@ -129,28 +137,77 @@ def put_knowledge_base_entry(entry: dict[str, Any]) -> None:
     get_dynamodb_resource().Table(KNOWLEDGE_BASE_TABLE).put_item(Item=_dynamo_safe(entry))
 
 
-def search_knowledge_base(machine_type: str, symptom_description: str) -> list[dict[str, Any]]:
-    """Keyword match over KB entries for a machine type.
+# A tiny, explicit normalization table instead of a stemmer or embeddings:
+# the KB is a handful of entries, and matching has to be deterministic so
+# the eval harness sees the same results every run. See ADR-0010 for the
+# bug this replaced (exact substring matching never matched "coolant
+# temperature spike" against "coolant temp spike").
+_SYNONYMS = {
+    "temperature": "temp",
+    "temperatures": "temp",
+    "temps": "temp",
+    "overheating": "temp",
+    "overheat": "temp",
+    "spiking": "spike",
+    "spiked": "spike",
+    "drifting": "drift",
+    "drifted": "drift",
+    "leaking": "leak",
+    "leaks": "leak",
+}
+_STOPWORDS = {
+    "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "in", "is",
+    "it", "no", "not", "of", "on", "or", "that", "the", "this", "to", "with",
+    "alert", "issue", "problem",
+}
 
-    Deliberately simple (substring match against issue_pattern/description) —
-    good enough for a small seeded KB, and it's *supposed* to surface the
-    seeded ambiguous scenario's conflicting entries rather than silently
-    picking one, so the agent loop has to reckon with it.
+
+def _tokens(text: str) -> set[str]:
+    out = set()
+    for word in re.findall(r"[a-z0-9]+", text.lower()):
+        word = _SYNONYMS.get(word, word)
+        if len(word) > 4 and word.endswith("s") and not word.endswith("ss"):
+            word = word[:-1]
+        if word not in _STOPWORDS:
+            out.add(word)
+    return out
+
+
+def _kb_match_score(query: set[str], entry: dict[str, Any]) -> int:
+    """0 means no match. Pattern-word overlap counts double.
+
+    One shared word is never enough on its own (e.g. "temp" alone would pull
+    a refrigeration "temperature drift" entry into a coolant query): it needs
+    the whole pattern, two pattern words, or a pattern word plus a distinct
+    description word.
+    """
+    pattern = _tokens(str(entry.get("issue_pattern", "")))
+    description_only = _tokens(str(entry.get("description", ""))) - pattern
+    pattern_hits = len(pattern & query)
+    description_hits = len(description_only & query)
+    matched = (
+        (pattern and pattern <= query)
+        or pattern_hits >= 2
+        or (pattern_hits >= 1 and description_hits >= 1)
+    )
+    return 2 * pattern_hits + description_hits if matched else 0
+
+
+def search_knowledge_base(machine_type: str, symptom_description: str) -> list[dict[str, Any]]:
+    """Word-overlap match over KB entries for a machine type, best first.
+
+    Still deliberately simple -- it's *supposed* to surface the seeded
+    ambiguous scenario's conflicting entries rather than silently picking
+    one, so the agent loop has to reckon with the conflict.
     """
     table = get_dynamodb_resource().Table(KNOWLEDGE_BASE_TABLE)
     resp = table.scan()
     entries: list[dict[str, Any]] = resp.get("Items", [])
-    symptom_lower = symptom_description.lower()
-    return [
-        e
-        for e in entries
-        if e.get("machine_type") == machine_type
-        and (
-            symptom_lower in e.get("issue_pattern", "").lower()
-            or symptom_lower in e.get("description", "").lower()
-            or e.get("issue_pattern", "").lower() in symptom_lower
-        )
+    query = _tokens(symptom_description)
+    scored = [
+        (_kb_match_score(query, e), e) for e in entries if e.get("machine_type") == machine_type
     ]
+    return [e for score, e in sorted(scored, key=lambda pair: -pair[0]) if score > 0]
 
 
 def create_alert(alert: dict[str, Any]) -> None:

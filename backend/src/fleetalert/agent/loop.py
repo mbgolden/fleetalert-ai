@@ -31,7 +31,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from fleetalert import config, repositories
+from fleetalert import config, pricing, repositories
 from fleetalert.agent.guardrails import (
     MAX_LOOP_ITERATIONS,
     MAX_REJECTION_ROUNDS,
@@ -111,6 +111,8 @@ def run_investigation(
             "fix_id (or stop calling tools) if nothing else plausible fits."
         )
     messages: list[dict[str, Any]] = [{"role": "user", "content": user_message}]
+    usage = pricing.empty_usage()
+    usage_seen = False
 
     for iteration in range(1, max_iterations + 1):
         log.debug("loop iteration %d/%d: calling model", iteration, max_iterations)
@@ -121,6 +123,9 @@ def run_investigation(
             tools=TOOL_SCHEMAS,
             messages=messages,
         )
+        if getattr(response, "usage", None) is not None:
+            pricing.add_usage(usage, response.usage)
+            usage_seen = True
         messages.append({"role": "assistant", "content": response.content})
 
         tool_use_blocks = [b for b in response.content if getattr(b, "type", None) == "tool_use"]
@@ -159,10 +164,39 @@ def run_investigation(
 
         if propose_fix_input is not None:
             log.info("iteration %d/%d: propose_fix received -> fix_id=%s", iteration, max_iterations, propose_fix_input.get("fix_id"))
-            return _finalize_proposed_fix(alert_id, propose_fix_input)
+            outcome = _finalize_proposed_fix(alert_id, propose_fix_input)
+            if usage_seen:
+                _record_usage(alert_id, model, usage, model_calls=iteration)
+            return outcome
 
     log.warning("max_iterations (%d) exhausted without a proposed fix -- routing to support", max_iterations)
-    return _route_to_support(alert_id, reason="max_iterations_exceeded")
+    outcome = _route_to_support(alert_id, reason="max_iterations_exceeded")
+    if usage_seen:
+        _record_usage(alert_id, model, usage, model_calls=max_iterations)
+    return outcome
+
+
+def _record_usage(alert_id: str, model: str, usage: dict[str, int], *, model_calls: int) -> None:
+    """Writes what this investigation round cost, to the log and the trace.
+
+    Cost is an estimate from fleetalert.pricing, not a billing figure.
+    """
+    cost = pricing.estimate_cost_usd(model, usage)
+    alert_logger(__name__, alert_id).info(
+        "investigation usage: model=%s calls=%d input=%d output=%d cache_read=%d est_cost_usd=%s",
+        model,
+        model_calls,
+        usage["input_tokens"],
+        usage["output_tokens"],
+        usage["cache_read_input_tokens"],
+        cost,
+    )
+    repositories.append_audit_log(
+        alert_id,
+        actor="system",
+        action="investigation_usage",
+        details={"model": model, "model_calls": model_calls, **usage, "estimated_cost_usd": cost},
+    )
 
 
 def confirm_fix(alert_id: str, confirmation_token: str) -> dict[str, Any]:
