@@ -34,4 +34,4 @@ jobs:
         run: terraform init
       - name: terraform apply
         working-directory: infra/envs/demo
-        run: terraform apply -auto-approve
+        run: terraform apply -auto-approve -lock-timeout=5m
