@@ -419,3 +419,35 @@ def test_propose_fix_missing_description_or_confidence_is_retried(dynamodb_table
     assert alert is not None
     assert alert["root_cause_summary"] == "full"
     assert float(alert["confidence"]) == 0.8
+
+
+def test_investigation_usage_is_recorded_with_an_estimated_cost(dynamodb_tables: None) -> None:
+    from types import SimpleNamespace
+
+    _seed(alert_id="ALERT-13", machine_id="M-1002", alert_type="temperature_drift")
+    usage = SimpleNamespace(input_tokens=5_000, output_tokens=500)
+
+    def with_usage(block: SimpleNamespace) -> SimpleNamespace:
+        return SimpleNamespace(content=[block], usage=usage)
+
+    client = FakeAnthropicClient(
+        [
+            with_usage(tool_use_block("search_knowledge_base", {"symptom_description": "temperature drift"}, "t1")),
+            with_usage(
+                tool_use_block(
+                    "propose_fix",
+                    {"fix_id": "send_diagnostic_reset", "description": "drift", "confidence": 0.8},
+                    "t2",
+                )
+            ),
+        ]
+    )
+
+    run_investigation("ALERT-13", client, model="claude-sonnet-5")
+
+    entry = get_audit_trail("ALERT-13")[-1]
+    assert entry["action"] == "investigation_usage"
+    assert entry["details"]["model_calls"] == 2
+    assert entry["details"]["input_tokens"] == 10_000
+    # 10K input at $2/M + 1K output at $10/M
+    assert float(entry["details"]["estimated_cost_usd"]) == 0.03
