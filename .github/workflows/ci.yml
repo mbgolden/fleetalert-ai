@@ -34,9 +34,15 @@ jobs:
       - run: npm run build
 
   terraform-plan:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Plan on PRs so reviewers see the infra diff before merge; on main the
+    # Terraform Apply workflow runs instead. Shares a concurrency group with
+    # it so a plan and an apply never contend for the state lock.
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     needs: backend
+    concurrency:
+      group: terraform-state-demo
+      cancel-in-progress: false
     permissions:
       id-token: write # required to fetch the OIDC token for AssumeRoleWithWebIdentity
       contents: read
@@ -55,5 +61,4 @@ jobs:
         run: terraform init
       - name: terraform plan
         working-directory: infra/envs/demo
-        run: terraform plan
-        # terraform apply is a manual, gated step — never run automatically.
+        run: terraform plan -lock-timeout=5m

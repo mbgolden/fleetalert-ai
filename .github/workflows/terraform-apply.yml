@@ -1,7 +1,16 @@
 name: Terraform Apply (demo)
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "infra/**"
   workflow_dispatch:
+
+concurrency:
+  group: terraform-state-demo
+  cancel-in-progress: false
 
 jobs:
   apply:
@@ -25,4 +34,4 @@ jobs:
         run: terraform init
       - name: terraform apply
         working-directory: infra/envs/demo
-        run: terraform apply -auto-approve
+        run: terraform apply -auto-approve -lock-timeout=5m
