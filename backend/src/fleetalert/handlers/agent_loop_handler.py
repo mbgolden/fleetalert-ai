@@ -11,6 +11,7 @@ import boto3
 from fleetalert import config, repositories
 from fleetalert.agent.loop import run_investigation
 from fleetalert.logging_config import alert_logger, configure_logging
+from fleetalert.tracing import SpanKind, SpanStatus, Tracer
 
 configure_logging()
 
@@ -42,7 +43,7 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     log.info("RunInvestigation task invoked")
     try:
         client = anthropic.Anthropic(api_key=_get_anthropic_api_key())
-        result = run_investigation(alert_id, client)
+        result = run_investigation(alert_id, client, entry_point=event.get("entry_point", "web"))
         log.info("RunInvestigation task complete: %s", result.get("outcome"))
         return result
     except Exception:
@@ -60,6 +61,15 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
 def _mark_failed(alert_id: str) -> None:
     try:
         repositories.update_alert(alert_id, status="failed")
-        repositories.append_audit_log(alert_id, actor="system", action="execution_failed", details={})
+        alert = repositories.get_alert(alert_id)
+        if alert is not None:
+            tracer = Tracer.continue_for(alert)
+            tracer.record(
+                name="execution_failed",
+                kind=SpanKind.LIFECYCLE,
+                actor="system",
+                status=SpanStatus.FAILURE,
+                parent_span_id=tracer.root_span_id,
+            )
     except Exception:  # noqa: BLE001, S110 -- best-effort; must never mask the real error  # nosec B110
         pass

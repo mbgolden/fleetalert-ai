@@ -7,7 +7,6 @@ this is the moto/local-dev equivalent of what Terraform provisions in AWS.
 from __future__ import annotations
 
 import re
-import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -17,10 +16,11 @@ from botocore.exceptions import ClientError
 
 from fleetalert.db import (
     ALERTS_TABLE,
-    AUDIT_LOG_TABLE,
     KNOWLEDGE_BASE_TABLE,
     MACHINES_TABLE,
     TELEMETRY_TABLE,
+    TRACES_ALERT_INDEX,
+    TRACES_TABLE,
     get_dynamodb_resource,
 )
 
@@ -75,14 +75,25 @@ def create_tables() -> None:
         BillingMode="PAY_PER_REQUEST",
     )
     ddb.create_table(
-        TableName=AUDIT_LOG_TABLE,
+        TableName=TRACES_TABLE,
         KeySchema=[
-            {"AttributeName": "alert_id", "KeyType": "HASH"},
-            {"AttributeName": "timestamp", "KeyType": "RANGE"},
+            {"AttributeName": "trace_id", "KeyType": "HASH"},
+            {"AttributeName": "span_id", "KeyType": "RANGE"},
         ],
         AttributeDefinitions=[
+            {"AttributeName": "trace_id", "AttributeType": "S"},
+            {"AttributeName": "span_id", "AttributeType": "S"},
             {"AttributeName": "alert_id", "AttributeType": "S"},
-            {"AttributeName": "timestamp", "AttributeType": "S"},
+        ],
+        GlobalSecondaryIndexes=[
+            {
+                "IndexName": TRACES_ALERT_INDEX,
+                "KeySchema": [
+                    {"AttributeName": "alert_id", "KeyType": "HASH"},
+                    {"AttributeName": "span_id", "KeyType": "RANGE"},
+                ],
+                "Projection": {"ProjectionType": "ALL"},
+            }
         ],
         BillingMode="PAY_PER_REQUEST",
     )
@@ -316,31 +327,40 @@ def _update_alert(
     table.update_item(**kwargs)
 
 
-def append_audit_log(
-    alert_id: str, actor: str, action: str, details: dict[str, Any]
-) -> dict[str, Any]:
-    """Append-only: there is deliberately no update/delete for this table."""
-    item = {
-        "alert_id": alert_id,
-        "timestamp": datetime.now(UTC).isoformat(),
-        "log_id": str(uuid.uuid4()),
-        "actor": actor,
-        "action": action,
-        "details": details,
-    }
-    get_dynamodb_resource().Table(AUDIT_LOG_TABLE).put_item(Item=_dynamo_safe(item))
-    return item
+def put_span(span: dict[str, Any]) -> None:
+    """Append-only: refuses to overwrite an existing span."""
+    get_dynamodb_resource().Table(TRACES_TABLE).put_item(
+        Item=_dynamo_safe(span),
+        ConditionExpression="attribute_not_exists(span_id)",
+    )
 
 
-def get_audit_trail(alert_id: str) -> list[dict[str, Any]]:
-    table = get_dynamodb_resource().Table(AUDIT_LOG_TABLE)
-    resp = table.query(KeyConditionExpression=Key("alert_id").eq(alert_id))
-    result: list[dict[str, Any]] = resp.get("Items", [])
-    return result
+def get_trace(trace_id: str) -> list[dict[str, Any]]:
+    table = get_dynamodb_resource().Table(TRACES_TABLE)
+    return _query_all(table, KeyConditionExpression=Key("trace_id").eq(trace_id))
 
 
-def clear_audit_trail(alert_id: str) -> None:
-    """Deletes every audit log entry for one alert -- used by the demo reset."""
-    table = get_dynamodb_resource().Table(AUDIT_LOG_TABLE)
-    for item in get_audit_trail(alert_id):
-        table.delete_item(Key={"alert_id": alert_id, "timestamp": item["timestamp"]})
+def get_spans_for_alert(alert_id: str) -> list[dict[str, Any]]:
+    """Every span for an alert across all its rounds, in order."""
+    table = get_dynamodb_resource().Table(TRACES_TABLE)
+    return _query_all(
+        table, IndexName=TRACES_ALERT_INDEX, KeyConditionExpression=Key("alert_id").eq(alert_id)
+    )
+
+
+def clear_spans_for_alert(alert_id: str) -> None:
+    """Demo Reset only -- the one path that deletes spans."""
+    table = get_dynamodb_resource().Table(TRACES_TABLE)
+    with table.batch_writer() as batch:
+        for span in get_spans_for_alert(alert_id):
+            batch.delete_item(Key={"trace_id": span["trace_id"], "span_id": span["span_id"]})
+
+
+def _query_all(table: Any, **kwargs: Any) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    while True:
+        resp = table.query(**kwargs)
+        items.extend(resp.get("Items", []))
+        if "LastEvaluatedKey" not in resp:
+            return items
+        kwargs["ExclusiveStartKey"] = resp["LastEvaluatedKey"]

@@ -1,7 +1,7 @@
 module "lambda_api" {
   source        = "../../modules/lambda_function"
   function_name = "${var.project_name}-demo-api"
-  description   = "API Gateway handler: list/investigate/status/confirm/reject/audit routes."
+  description   = "API Gateway handler: list/investigate/status/confirm/reject/trace/reset routes."
   handler       = "fleetalert.handlers.api_handler.handler"
   timeout       = 30
   source_dir    = local.lambda_source_dir

@@ -2,9 +2,10 @@ from datetime import datetime, timedelta
 from itertools import pairwise
 from typing import Any
 
-from fleetalert.agent.tools import execute_tool
+from fleetalert.capabilities import AGENT_TIERS, CapabilityContext, build_registry
 from fleetalert.repositories import get_alert, get_machine
 from fleetalert.seed_data import SEED_ALERTS, reseed_demo_data, seed_telemetry
+from fleetalert.tracing import Tracer
 
 
 def _snapshot(alert_id: str, window_minutes: int = 60) -> list[dict[str, Any]]:
@@ -12,10 +13,14 @@ def _snapshot(alert_id: str, window_minutes: int = 60) -> list[dict[str, Any]]:
     assert alert is not None
     machine = get_machine(alert["machine_id"])
     assert machine is not None
-    result = execute_tool(
-        "get_telemetry_snapshot", {"window_minutes": window_minutes}, alert=alert, machine=machine
+    result = build_registry().invoke(
+        "get_telemetry_snapshot",
+        {"window_minutes": window_minutes},
+        CapabilityContext(alert=alert, machine=machine, tracer=Tracer.start(alert_id), actor="agent"),
+        allowed_tiers=AGENT_TIERS,
     )
-    readings: list[dict[str, Any]] = result["readings"]
+    assert result.ok and result.output is not None
+    readings: list[dict[str, Any]] = result.output["readings"]
     return readings
 
 

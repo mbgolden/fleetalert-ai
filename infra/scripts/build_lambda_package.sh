@@ -16,7 +16,11 @@ UV="$(command -v uv || echo "$HOME/.local/bin/uv")"
 
 rm -rf build/lambda_package
 mkdir -p build/lambda_package
-"$UV" pip install --target build/lambda_package .
+# Pin the target explicitly: jsonschema pulls in rpds-py (compiled), and
+# the wheels must match Lambda's python3.12 x86_64 runtime regardless of
+# which Python the CI runner image happens to ship.
+"$UV" pip install --target build/lambda_package \
+  --python-platform x86_64-manylinux2014 --python-version 3.12 .
 
 # Normalize mtimes so the zip Terraform's archive_file builds is
 # byte-reproducible across runs with no real code change -- pip/uv give

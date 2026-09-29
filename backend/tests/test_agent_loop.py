@@ -5,7 +5,6 @@ from fleetalert.agent.loop import confirm_fix, execute_fix, reject_fix, run_inve
 from fleetalert.repositories import (
     create_alert,
     get_alert,
-    get_audit_trail,
     put_knowledge_base_entry,
     put_machine,
     update_alert,
@@ -13,6 +12,8 @@ from fleetalert.repositories import (
 )
 from fleetalert.seed_data import SEED_KNOWLEDGE_BASE, SEED_MACHINES
 from tests.fakes import FakeAnthropicClient, response, text_block, tool_use_block
+from tests.trace_helpers import event_names, last_event, round_spans
+from tests.trace_helpers import events as events_for
 
 
 def _seed(*, alert_id: str, machine_id: str, alert_type: str, severity: str = "medium") -> None:
@@ -65,12 +66,12 @@ def test_run_investigation_whitelisted_fix_awaits_confirmation(dynamodb_tables: 
     assert alert["status"] == "awaiting_confirmation"
     assert alert["confirmation_token"] == result["confirmation_token"]
 
-    actions = [e["action"] for e in get_audit_trail("ALERT-1")]
-    assert actions == [
+    assert event_names("ALERT-1") == [
         "investigation_started",
         "get_telemetry_snapshot",
         "search_knowledge_base",
         "propose_fix",
+        "guardrail.whitelist",
         "request_confirmation",
     ]
 
@@ -100,7 +101,7 @@ def test_run_investigation_non_whitelisted_fix_routes_to_support(dynamodb_tables
     assert alert is not None
     assert alert["status"] == "routed_to_support"
 
-    last_action = get_audit_trail("ALERT-2")[-1]
+    last_action = last_event("ALERT-2")
     assert last_action["action"] == "route_to_support"
     assert last_action["details"]["fix_id"] == "replace_engine"
 
@@ -164,8 +165,7 @@ def test_execute_fix_requires_matching_confirmation_token(dynamodb_tables: None)
     assert result["outcome"] == "resolved"
     assert get_alert("ALERT-4")["status"] == "resolved"  # type: ignore[index]
 
-    actions = [e["action"] for e in get_audit_trail("ALERT-4")]
-    assert actions[-1] == "execute_fix"
+    assert event_names("ALERT-4")[-1] == "execute_fix"
 
 
 def test_execute_fix_rejects_when_a_concurrent_request_already_resolved_it(
@@ -219,7 +219,7 @@ def test_confirm_fix_logs_human_action_without_executing(dynamodb_tables: None) 
     # confirming does not execute anything -- status is unchanged
     assert get_alert("ALERT-4B")["status"] == "awaiting_confirmation"  # type: ignore[index]
 
-    last_action = get_audit_trail("ALERT-4B")[-1]
+    last_action = last_event("ALERT-4B")
     assert last_action["actor"] == "human"
     assert last_action["action"] == "confirm"
 
@@ -267,7 +267,7 @@ def test_reject_fix_reinvestigates_instead_of_ending_the_flow(dynamodb_tables: N
     assert [r["fix_id"] for r in alert["rejected_fixes"]] == ["send_diagnostic_reset"]
     assert alert["rejected_fixes"][0]["reason"] == "visitor rejected"
 
-    last_action = get_audit_trail("ALERT-7")[-1]
+    last_action = last_event("ALERT-7")
     assert last_action["actor"] == "human"
     assert last_action["action"] == "reject"
 
@@ -313,7 +313,7 @@ def test_reject_fix_exhausts_budget_and_routes_to_support(dynamodb_tables: None)
     assert alert["status"] == "routed_to_support"
     assert len(alert["rejected_fixes"]) == 2
 
-    last_action = get_audit_trail("ALERT-7B")[-1]
+    last_action = last_event("ALERT-7B")
     assert last_action["action"] == "route_to_support"
     assert last_action["details"]["reason"] == "rejection_budget_exhausted"
 
@@ -445,12 +445,12 @@ def test_investigation_usage_is_recorded_with_an_estimated_cost(dynamodb_tables:
 
     run_investigation("ALERT-13", client, model="claude-sonnet-5")
 
-    entry = get_audit_trail("ALERT-13")[-1]
-    assert entry["action"] == "investigation_usage"
-    assert entry["details"]["model_calls"] == 2
-    assert entry["details"]["input_tokens"] == 10_000
+    (round_span,) = round_spans("ALERT-13")
+    attrs = round_span["attributes"]
+    assert attrs["model_calls"] == 2
+    assert attrs["input_tokens"] == 10_000
     # 10K input at $2/M + 1K output at $10/M
-    assert float(entry["details"]["estimated_cost_usd"]) == 0.03
+    assert float(attrs["estimated_cost_usd"]) == 0.03
 
 
 def test_tool_results_with_dynamodb_decimals_reach_the_model(dynamodb_tables: None) -> None:
@@ -482,3 +482,96 @@ def test_tool_results_with_dynamodb_decimals_reach_the_model(dynamodb_tables: No
     sent = client.messages.calls[1]["messages"][2]["content"][0]["content"]
     readings = json.loads(sent)["readings"]
     assert any(r["signal_readings"]["coolant_temp_c"] == 121 for r in readings)
+
+
+def _whitelisted_run(alert_id: str) -> FakeAnthropicClient:
+    return FakeAnthropicClient(
+        [
+            response(
+                text_block("Checking telemetry first."),
+                tool_use_block("get_telemetry_snapshot", {"window_minutes": 30}, "t1"),
+            ),
+            response(
+                tool_use_block(
+                    "propose_fix",
+                    {"fix_id": "send_diagnostic_reset", "description": "drift", "confidence": 0.8},
+                    "t2",
+                )
+            ),
+        ]
+    )
+
+
+def test_a_round_is_one_trace_with_a_proper_span_tree(dynamodb_tables: None) -> None:
+    from fleetalert.repositories import get_spans_for_alert
+
+    _seed(alert_id="ALERT-20", machine_id="M-1002", alert_type="temperature_drift")
+
+    run_investigation("ALERT-20", _whitelisted_run("ALERT-20"), entry_point="email")
+
+    spans = get_spans_for_alert("ALERT-20")
+    assert len({s["trace_id"] for s in spans}) == 1
+    assert {s["entry_point"] for s in spans} == {"email"}
+
+    (root,) = [s for s in spans if s["kind"] == "investigation"]
+    assert root["parent_span_id"] is None
+    assert root["output"]["outcome"] == "awaiting_confirmation"
+    assert root["output"]["confirmation_token"] == "[redacted]"
+    assert root["attributes"]["model_calls"] == 2
+
+    model_calls = [s for s in spans if s["kind"] == "model_call"]
+    assert [s["parent_span_id"] for s in model_calls] == [root["span_id"]] * 2
+    assert model_calls[0]["output"]["tool_calls"] == ["get_telemetry_snapshot"]
+    assert model_calls[0]["output"]["text"] == "Checking telemetry first."
+
+    (telemetry,) = [s for s in spans if s["name"] == "get_telemetry_snapshot"]
+    assert telemetry["parent_span_id"] == model_calls[0]["span_id"]
+    assert telemetry["actor"] == "agent"
+
+    alert = get_alert("ALERT-20")
+    assert alert is not None
+    assert alert["current_trace_id"] == root["trace_id"]
+
+
+def test_non_whitelisted_proposal_records_a_denied_guardrail_decision(dynamodb_tables: None) -> None:
+    _seed(alert_id="ALERT-21", machine_id="M-1001", alert_type="coolant_temp_spike")
+    client = FakeAnthropicClient(
+        [response(tool_use_block("propose_fix", {"fix_id": "replace_engine", "description": "x", "confidence": 0.9}))]
+    )
+
+    run_investigation("ALERT-21", client)
+
+    whitelist = [e for e in events_for("ALERT-21") if e["action"] == "guardrail.whitelist"]
+    assert [e["status"] for e in whitelist] == ["denied"]
+
+
+def test_rejecting_starts_a_new_trace_linked_to_the_previous_one(dynamodb_tables: None) -> None:
+    _seed(alert_id="ALERT-22", machine_id="M-1002", alert_type="temperature_drift")
+    run_investigation("ALERT-22", _whitelisted_run("ALERT-22"))
+    first_trace = get_alert("ALERT-22")["current_trace_id"]  # type: ignore[index]
+
+    reject_fix("ALERT-22", reason="nope")
+    client = FakeAnthropicClient(
+        [response(tool_use_block("propose_fix", {"fix_id": "restart_sensor", "description": "y", "confidence": 0.6}))]
+    )
+    run_investigation("ALERT-22", client)
+
+    rounds = round_spans("ALERT-22")
+    assert len(rounds) == 2
+    assert rounds[0]["trace_id"] == first_trace
+    assert rounds[1]["trace_id"] != first_trace
+    assert rounds[1]["input"]["previous_trace_id"] == first_trace
+    reject = [e for e in events_for("ALERT-22") if e["action"] == "reject"]
+    assert reject[0]["span"]["trace_id"] == first_trace
+
+
+def test_a_step_functions_retry_after_a_crash_actually_reruns(dynamodb_tables: None) -> None:
+    """The handler marks the alert failed on every raised attempt. The retry
+    used to be refused as a "duplicate" and just report failed; it must
+    re-run the investigation instead."""
+    _seed(alert_id="ALERT-23", machine_id="M-1002", alert_type="temperature_drift")
+    update_alert("ALERT-23", status="failed")
+
+    result = run_investigation("ALERT-23", _whitelisted_run("ALERT-23"))
+
+    assert result["outcome"] == "awaiting_confirmation"

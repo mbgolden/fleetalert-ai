@@ -7,11 +7,11 @@ from fleetalert.handlers import api_handler
 from fleetalert.repositories import (
     create_alert,
     get_alert,
-    get_audit_trail,
     put_machine,
     update_alert,
 )
 from fleetalert.seed_data import SEED_MACHINES
+from tests.trace_helpers import last_event
 
 
 class _FakeStepFunctionsClient:
@@ -86,7 +86,7 @@ def test_investigate_route_starts_execution(
     assert len(fake_sfn.started_executions) == 1
     call = fake_sfn.started_executions[0]
     assert call["stateMachineArn"] == "arn:aws:states:us-east-1:123456789012:stateMachine:demo"
-    assert json.loads(call["input"]) == {"alert_id": "ALERT-3"}
+    assert json.loads(call["input"]) == {"alert_id": "ALERT-3", "entry_point": "web"}
 
 
 def test_get_status_route(dynamodb_tables: None) -> None:
@@ -156,7 +156,7 @@ def test_confirm_route_sends_task_success_when_task_token_present(
         "confirmation_token": "tok-abc",
     }
 
-    last_action = get_audit_trail("ALERT-5")[-1]
+    last_action = last_event("ALERT-5")
     assert last_action["action"] == "confirm"
 
 
@@ -263,11 +263,12 @@ def test_audit_route(dynamodb_tables: None) -> None:
 
 
 def test_reset_route_restores_default_state_and_clears_trail(dynamodb_tables: None) -> None:
-    from fleetalert.repositories import append_audit_log, get_alert, get_audit_trail
+    from fleetalert.repositories import get_alert, get_spans_for_alert
     from fleetalert.seed_data import SEED_ALERTS
+    from fleetalert.tracing import SpanKind, Tracer
 
     _seed_alert(SEED_ALERTS[0]["alert_id"], status="failed", rejected_fixes=[{"fix_id": "x"}])
-    append_audit_log(SEED_ALERTS[0]["alert_id"], actor="agent", action="stale_entry", details={})
+    Tracer.start(SEED_ALERTS[0]["alert_id"]).record(name="stale_entry", kind=SpanKind.LIFECYCLE, actor="agent")
 
     resp = api_handler.handler({"routeKey": "POST /demo/reset"}, None)
 
@@ -278,9 +279,28 @@ def test_reset_route_restores_default_state_and_clears_trail(dynamodb_tables: No
     assert alert is not None
     assert alert["status"] == "open"
     assert "rejected_fixes" not in alert
-    assert get_audit_trail(SEED_ALERTS[0]["alert_id"]) == []
+    assert get_spans_for_alert(SEED_ALERTS[0]["alert_id"]) == []
 
 
 def test_unknown_route_returns_404(dynamodb_tables: None) -> None:
     resp = api_handler.handler({"routeKey": "DELETE /demo/alerts"}, None)
     assert resp["statusCode"] == 404
+
+
+def test_trace_route_returns_spans_in_order(dynamodb_tables: None) -> None:
+    from fleetalert.tracing import SpanKind, Tracer
+
+    _seed_alert("ALERT-9")
+    tracer = Tracer.start("ALERT-9")
+    tracer.record(name="first", kind=SpanKind.LIFECYCLE, actor="system")
+    tracer.record(name="second", kind=SpanKind.LIFECYCLE, actor="system")
+
+    resp = api_handler.handler(
+        {"routeKey": "GET /demo/alerts/{alert_id}/trace", "pathParameters": {"alert_id": "ALERT-9"}},
+        None,
+    )
+
+    body = json.loads(resp["body"])
+    assert body["alert_id"] == "ALERT-9"
+    assert [s["name"] for s in body["spans"]] == ["first", "second"]
+

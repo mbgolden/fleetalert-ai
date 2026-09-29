@@ -9,9 +9,10 @@ from fleetalert.handlers.execute_fix_handler import handler as execute_fix_handl
 from fleetalert.handlers.wait_for_confirmation_handler import (
     handler as wait_for_confirmation_handler,
 )
-from fleetalert.repositories import create_alert, get_alert, get_audit_trail, put_machine
+from fleetalert.repositories import create_alert, get_alert, put_machine
 from fleetalert.seed_data import SEED_MACHINES
 from tests.fakes import FakeAnthropicClient, response, tool_use_block
+from tests.trace_helpers import last_event
 
 
 def _seed_alert(alert_id: str, **overrides: object) -> None:
@@ -40,8 +41,8 @@ def test_wait_for_confirmation_handler_persists_task_token(dynamodb_tables: None
     assert alert is not None
     assert alert["step_functions_task_token"] == "sfn-task-token-abc"
 
-    last_action = get_audit_trail("ALERT-1")[-1]
-    assert last_action["action"] == "state_machine_paused_for_confirmation"
+    last_action = last_event("ALERT-1")
+    assert last_action["action"] == "awaiting_human_confirmation"
 
 
 def test_execute_fix_handler_delegates_to_agent_loop(dynamodb_tables: None) -> None:
@@ -83,7 +84,7 @@ def test_execute_fix_handler_marks_alert_failed_on_exception(dynamodb_tables: No
     assert alert is not None
     assert alert["status"] == "failed"
 
-    last_action = get_audit_trail("ALERT-2B")[-1]
+    last_action = last_event("ALERT-2B")
     assert last_action["actor"] == "system"
     assert last_action["action"] == "execution_failed"
 
@@ -168,6 +169,6 @@ def test_agent_loop_handler_marks_alert_failed_on_exception(
     assert alert is not None
     assert alert["status"] == "failed"
 
-    last_action = get_audit_trail("ALERT-5")[-1]
+    last_action = last_event("ALERT-5")
     assert last_action["actor"] == "system"
     assert last_action["action"] == "execution_failed"

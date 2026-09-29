@@ -3,10 +3,8 @@ import pytest
 from fleetalert.db import ALERTS_TABLE, get_dynamodb_resource
 from fleetalert.repositories import (
     ConcurrentUpdateError,
-    append_audit_log,
     create_alert,
     get_alert,
-    get_audit_trail,
     get_machine,
     get_service_history,
     get_telemetry_snapshot,
@@ -155,17 +153,18 @@ def test_update_alert_if_current_rejects_a_write_older_than_the_last_one(dynamod
         update_alert_if_current("ALERT-5", expected_status="investigating", status="awaiting_confirmation")
 
 
-def test_audit_log_is_append_only_and_ordered(dynamodb_tables: None) -> None:
-    append_audit_log("ALERT-1", "agent", "get_telemetry_snapshot", {"machine_id": "M-1001"})
-    append_audit_log("ALERT-1", "agent", "search_knowledge_base", {"machine_type": "diesel_engine"})
-    append_audit_log("ALERT-1", "human", "confirm", {"fix_id": "restart_sensor"})
+def test_spans_are_append_only_and_ordered(dynamodb_tables: None) -> None:
+    from botocore.exceptions import ClientError
 
-    trail = get_audit_trail("ALERT-1")
+    from fleetalert.repositories import get_spans_for_alert, get_trace, put_span
+    from fleetalert.tracing import SpanKind, Tracer
 
-    assert len(trail) == 3
-    assert [e["action"] for e in trail] == [
-        "get_telemetry_snapshot",
-        "search_knowledge_base",
-        "confirm",
-    ]
-    assert [e["actor"] for e in trail] == ["agent", "agent", "human"]
+    tracer = Tracer.start("ALERT-1")
+    first = tracer.record(name="get_telemetry_snapshot", kind=SpanKind.CAPABILITY, actor="agent")
+    tracer.record(name="confirm", kind=SpanKind.HUMAN_ACTION, actor="human")
+
+    assert [s["name"] for s in get_trace(tracer.trace_id)] == ["get_telemetry_snapshot", "confirm"]
+    assert [s["name"] for s in get_spans_for_alert("ALERT-1")] == ["get_telemetry_snapshot", "confirm"]
+
+    with pytest.raises(ClientError, match="ConditionalCheckFailed"):
+        put_span({"trace_id": tracer.trace_id, "span_id": first, "alert_id": "ALERT-1", "name": "overwrite"})
