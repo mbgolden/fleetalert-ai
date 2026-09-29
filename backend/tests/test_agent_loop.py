@@ -451,3 +451,34 @@ def test_investigation_usage_is_recorded_with_an_estimated_cost(dynamodb_tables:
     assert entry["details"]["input_tokens"] == 10_000
     # 10K input at $2/M + 1K output at $10/M
     assert float(entry["details"]["estimated_cost_usd"]) == 0.03
+
+
+def test_tool_results_with_dynamodb_decimals_reach_the_model(dynamodb_tables: None) -> None:
+    """Seeded telemetry comes back from DynamoDB as Decimal; json.dumps
+    used to raise TypeError on it outside the tool-error handling, crashing
+    every investigation that read telemetry.
+    """
+    import json
+
+    from fleetalert.seed_data import reseed_demo_data
+
+    reseed_demo_data()
+    client = FakeAnthropicClient(
+        [
+            response(tool_use_block("get_telemetry_snapshot", {"window_minutes": 60}, "t1")),
+            response(
+                tool_use_block(
+                    "propose_fix",
+                    {"fix_id": "restart_sensor", "description": "lone spike", "confidence": 0.8},
+                    "t2",
+                )
+            ),
+        ]
+    )
+
+    result = run_investigation("ALERT-1004", client)
+
+    assert result["outcome"] == "awaiting_confirmation"
+    sent = client.messages.calls[1]["messages"][2]["content"][0]["content"]
+    readings = json.loads(sent)["readings"]
+    assert any(r["signal_readings"]["coolant_temp_c"] == 121 for r in readings)

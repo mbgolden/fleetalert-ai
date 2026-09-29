@@ -29,6 +29,7 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 from fleetalert import config, pricing, repositories
@@ -46,6 +47,13 @@ _CONTINUE_NUDGE = (
     "Continue the investigation using the available tools, or call "
     "propose_fix once you have enough information."
 )
+
+
+def _json_default(value: Any) -> Any:
+    """DynamoDB returns numbers as Decimal, which json.dumps can't encode."""
+    if isinstance(value, Decimal):
+        return int(value) if value == value.to_integral_value() else float(value)
+    raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
 
 
 def run_investigation(
@@ -151,7 +159,7 @@ def run_investigation(
             tool_result: dict[str, Any] = {
                 "type": "tool_result",
                 "tool_use_id": block.id,
-                "content": json.dumps(result),
+                "content": json.dumps(result, default=_json_default),
             }
             if is_error:
                 tool_result["is_error"] = True

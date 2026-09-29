@@ -23,8 +23,12 @@ def text_block(text: str = "thinking...") -> SimpleNamespace:
 class _FakeMessages:
     def __init__(self, responses: list[SimpleNamespace]) -> None:
         self._responses = iter(responses)
+        # Each call's kwargs, with a snapshot of `messages` as sent (the loop
+        # keeps appending to the same list afterwards).
+        self.calls: list[dict[str, Any]] = []
 
-    def create(self, **_kwargs: Any) -> SimpleNamespace:
+    def create(self, **kwargs: Any) -> SimpleNamespace:
+        self.calls.append({**kwargs, "messages": list(kwargs.get("messages", []))})
         try:
             return next(self._responses)
         except StopIteration as exc:
