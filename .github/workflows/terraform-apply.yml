@@ -1,7 +1,16 @@
 name: Terraform Apply (demo)
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "infra/**"
   workflow_dispatch:
+
+concurrency:
+  group: terraform-state-demo
+  cancel-in-progress: false
 
 jobs:
   apply:
