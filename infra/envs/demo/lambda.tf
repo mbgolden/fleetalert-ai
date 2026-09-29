@@ -14,7 +14,11 @@ locals {
       "dynamodb:Query",
       "dynamodb:Scan",
     ]
-    resources = values(module.dynamodb.table_arns)
+    # Tables plus their indexes (the traces alert index is queried directly).
+    resources = concat(
+      values(module.dynamodb.table_arns),
+      [for arn in values(module.dynamodb.table_arns) : "${arn}/index/*"],
+    )
   }
 
   common_environment = {

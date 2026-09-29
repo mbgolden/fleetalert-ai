@@ -271,7 +271,7 @@ def reseed_demo_data() -> None:
     Shared by scripts/seed_demo_data.py (run by hand against real AWS) and
     the demo API's own /demo/reset route (the frontend's "Reset Alerts"
     button) -- same safe-to-rerun put_item semantics either way. Also wipes
-    each seeded alert's audit trail, since a stale trace from a previous
+    each seeded alert's trace spans, since a stale trace from a previous
     investigation would contradict a freshly "open" alert on the UI's
     Investigation trace panel.
     """
@@ -281,5 +281,5 @@ def reseed_demo_data() -> None:
         repositories.put_knowledge_base_entry(entry)
     repositories.put_telemetry_readings(seed_telemetry())
     for alert in SEED_ALERTS:
-        repositories.clear_audit_trail(alert["alert_id"])
+        repositories.clear_spans_for_alert(alert["alert_id"])
         repositories.create_alert(alert)

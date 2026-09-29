@@ -19,7 +19,8 @@ MACHINES_TABLE = _table_name("machines")
 TELEMETRY_TABLE = _table_name("telemetry")
 ALERTS_TABLE = _table_name("alerts")
 KNOWLEDGE_BASE_TABLE = _table_name("knowledge-base")
-AUDIT_LOG_TABLE = _table_name("audit-log")
+TRACES_TABLE = _table_name("traces")
+TRACES_ALERT_INDEX = "alert_id-span_id-index"
 
 
 def get_dynamodb_resource() -> Any:
