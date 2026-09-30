@@ -1,0 +1,43 @@
+{
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-09-30T12:38:02+00:00",
+  "overall_pass_rate": 0.9444,
+  "scenarios": {
+    "coolant-leak": {
+      "pass_rate": 1.0,
+      "trials": 3,
+      "mean_cost_usd": 0.020209,
+      "mean_latency_ms": 11605.0
+    },
+    "cabin-drift": {
+      "pass_rate": 1.0,
+      "trials": 3,
+      "mean_cost_usd": 0.025091,
+      "mean_latency_ms": 15646.0
+    },
+    "oil-pressure": {
+      "pass_rate": 1.0,
+      "trials": 3,
+      "mean_cost_usd": 0.021218,
+      "mean_latency_ms": 11947.8
+    },
+    "sensor-glitch": {
+      "pass_rate": 0.6667,
+      "trials": 3,
+      "mean_cost_usd": 0.062295,
+      "mean_latency_ms": 28207.0
+    },
+    "compressor-no-kb": {
+      "pass_rate": 1.0,
+      "trials": 3,
+      "mean_cost_usd": 0.05264,
+      "mean_latency_ms": 23459.5
+    },
+    "oil-pressure-rejected": {
+      "pass_rate": 1.0,
+      "trials": 3,
+      "mean_cost_usd": 0.061559,
+      "mean_latency_ms": 35602.3
+    }
+  }
+}
