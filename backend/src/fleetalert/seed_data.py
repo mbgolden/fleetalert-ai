@@ -82,7 +82,14 @@ SEED_KNOWLEDGE_BASE: list[dict[str, Any]] = [
         "kb_id": "KB-003",
         "machine_type": "refrigeration_unit",
         "issue_pattern": "temperature drift",
-        "description": "Cabin temperature slowly drifting outside setpoint band.",
+        "description": (
+            "Cabin temperature slowly drifting above the setpoint band while the "
+            "unit controller's own return-air reading still shows setpoint -- the "
+            "controller's sensor calibration has drifted, so it under-cools. A "
+            "remote diagnostic reset re-runs controller self-calibration. Does not "
+            "apply if the controller reading tracks the cabin probe: then the "
+            "refrigeration circuit itself is at fault and needs a technician."
+        ),
         "known_fix": "send_diagnostic_reset",
     },
     {
@@ -170,9 +177,18 @@ def _diesel(i: int, *, coolant_temp_c: float, coolant_level_pct: float, oil_pres
     }
 
 
-def _reefer(cabin_temp_c: float, compressor_current_a: float, compressor_state: str) -> dict[str, Any]:
+def _reefer(
+    cabin_temp_c: float,
+    compressor_current_a: float,
+    compressor_state: str,
+    *,
+    controller_reading_c: float | None = None,
+) -> dict[str, Any]:
+    # cabin_temp_c is an independent cabin probe; controller_reading_c is
+    # the unit controller's own return-air sensor, which normally agrees.
     return {
         "cabin_temp_c": round(cabin_temp_c, 1),
+        "controller_reading_c": round(cabin_temp_c if controller_reading_c is None else controller_reading_c, 1),
         "setpoint_c": 2.0,
         "compressor_current_a": round(compressor_current_a, 1),
         "compressor_state": compressor_state,
@@ -212,15 +228,21 @@ def _oil_pressure_decline(m: int, i: int) -> dict[str, Any]:
 
 
 def _cabin_drift(m: int, i: int) -> dict[str, Any]:
-    # ALERT-1002: cabin slowly drifts off setpoint while the compressor runs
-    # normally -- KB-003.
+    # ALERT-1002: the cabin probe drifts above setpoint while the controller's
+    # own reading stays at setpoint, and the compressor eases off because the
+    # controller thinks it's satisfied -- KB-003's calibration drift. (The
+    # first version had no controller reading and the compressor at full
+    # current throughout, which reads as a refrigeration fault; the first
+    # live eval run caught that. See docs/decisions/ADR-0012.)
+    controller = 2.0 + _wobble(i, 0.2)
     if m < -120:
-        cabin = 2.0 + _wobble(i, 0.2)
+        cabin, current = controller, 11.5 + _wobble(i, 0.4)
     elif m <= 0:
-        cabin = 2.0 + 4.4 * (m + 120) / 120
+        frac = (m + 120) / 120
+        cabin, current = 2.0 + 3.2 * frac, 11.5 - 3.0 * frac + _wobble(i, 0.3)
     else:
-        cabin = 6.4 + min(1.2, m / 150)
-    return _reefer(cabin, 11.5 + _wobble(i, 0.4), "running")
+        cabin, current = 5.2 + min(0.6, m / 300), 8.5 + _wobble(i, 0.3)
+    return _reefer(cabin, current, "running", controller_reading_c=controller)
 
 
 def _compressor_fault(m: int, i: int) -> dict[str, Any]:

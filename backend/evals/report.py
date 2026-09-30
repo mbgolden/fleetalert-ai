@@ -97,6 +97,16 @@ def to_markdown(suite: SuiteResult, baseline: dict[str, Any] | None = None) -> s
         for s, n, t in failed:
             lines.append(f"**{s.scenario.scenario_id} #{n}** → {' -> '.join(t.labels) or 'no rounds'}")
             lines += [f"- {g.name}: {g.detail}" for g in t.grades if g.gating and not g.passed]
+            # The model's own rationale, so a miss can be judged from the
+            # summary alone: wrong answer, or wrong expectation?
+            for proposal in t.as_dict()["proposals"]:
+                rationale = " ".join(str(proposal["description"] or "").split())
+                if len(rationale) > 400:
+                    rationale = rationale[:400] + "…"
+                lines.append(
+                    f"- round {proposal['round']} proposed `{proposal['fix_id']}` "
+                    f"(confidence {proposal['confidence']}): _{rationale}_"
+                )
             lines.append("")
         lines.append("</details>")
     return "\n".join(lines) + "\n"

@@ -60,8 +60,9 @@ SCENARIOS: tuple[Scenario, ...] = (
         alert_id="ALERT-1002",
         summary="Reefer cabin temperature drifting off setpoint",
         why=(
-            "Cabin drifts 2.0 -> 6.4 C over two hours with the compressor running "
-            "normally: KB-003 -> send_diagnostic_reset."
+            "The cabin probe drifts 2.0 -> 5.2 C over two hours while the controller's "
+            "own reading stays at setpoint and compressor current eases off: the "
+            "controller's calibration drifted, exactly KB-003 -> send_diagnostic_reset."
         ),
         rounds=(RoundExpectation(frozenset({"send_diagnostic_reset"})),),
     ),

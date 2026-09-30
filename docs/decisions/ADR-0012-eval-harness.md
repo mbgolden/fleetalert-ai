@@ -66,3 +66,31 @@ file and `baseline.json`, which later reports show deltas against.
 - Six scenarios is a small set. It covers every seeded path plus
   rejection, but new entry points (email, autonomous) should add their own
   scenarios as they land.
+
+## First live run (2026-09-30, Sonnet 5, 3 trials)
+Overall pass rate was 83%. The gate failed on one scenario, and the failure
+was in the test data, not the model.
+
+- **`cabin-drift`: 0/3.** Every trial proposed `schedule_service_visit`
+  instead of the expected `send_diagnostic_reset`. The seeded telemetry had
+  the cabin warming from 2.0 to 7.6 C and still climbing while the
+  compressor drew full current, which is what a failing refrigeration
+  circuit looks like. KB-003 said only "cabin temperature slowly drifting",
+  with nothing to explain why a remote reset would fix it. Sending a
+  technician was the reasonable call, so the expectation was wrong, not the
+  answer. Loosening the grader to accept a service visit would have hidden
+  the real problem: a demo scenario whose evidence doesn't support its own
+  answer. The fix was to the data. The telemetry now carries the
+  controller's own reading, which stays at setpoint while the cabin probe
+  runs warm and the compressor eases off: a controller calibration drift.
+  KB-003 now describes that signature and when it does *not* apply. A seed
+  test pins the story.
+- **`compressor-no-kb`: passed, but overconfident.** All three runs scored
+  confidence above 0.7 with no KB entry behind the fix (a non-gating
+  warning). The system prompt now asks for 0.6 or below, stated in the
+  description, when no KB entry matches. Both changes are measured by the
+  next run.
+- `sensor-glitch` passed 3/3, so the prompt's "prefer the more cautious
+  option" line isn't biasing the ambiguous case the way it was feared to.
+- The failed-trial section of the report now includes the model's own
+  rationale, so a miss can be triaged from the job summary alone.
