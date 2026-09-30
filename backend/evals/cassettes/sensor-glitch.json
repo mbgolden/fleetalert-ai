@@ -1,0 +1,66 @@
+{
+  "scenario_id": "sensor-glitch",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-09-30T12:53:16+00:00",
+  "rounds": [
+    {
+      "fingerprint": "a39463c5b12b4abb",
+      "responses": [
+        {
+          "stop_reason": "tool_use",
+          "content": [
+            {
+              "type": "tool_use",
+              "id": "toolu_01Kw3sSyQC89zRQpZ9sqQ8p4",
+              "name": "get_telemetry_snapshot",
+              "input": {
+                "window_minutes": 60
+              }
+            },
+            {
+              "type": "tool_use",
+              "id": "toolu_01CAqb73G1AcwfnXoXyWLH1p",
+              "name": "search_knowledge_base",
+              "input": {
+                "symptom_description": "coolant_temp_spike"
+              }
+            },
+            {
+              "type": "tool_use",
+              "id": "toolu_01Vm5ztydstSzo48M5Uzu25N",
+              "name": "get_service_history",
+              "input": {}
+            }
+          ],
+          "usage": {
+            "input_tokens": 1456,
+            "output_tokens": 158,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0
+          }
+        },
+        {
+          "stop_reason": "tool_use",
+          "content": [
+            {
+              "type": "tool_use",
+              "id": "toolu_01YPhmjQ1U3Cjec4E5Qhw41y",
+              "name": "propose_fix",
+              "input": {
+                "fix_id": "restart_sensor",
+                "confidence": 0.72,
+                "description": "Telemetry shows a single transient spike to 121\u00b0C at 14:15 that reverted to baseline (~89.5\u00b0C) at the very next reading 10 minutes later, with coolant_level_pct steady at 96% throughout the entire window (no drop before, during, or after). Service history shows no recent coolant issues (last flush was routine, 3+ months ago). KB search returned two conflicting entries: KB-001 attributes transient spikes with no sustained temp rise to a sensor calibration glitch (fix: restart_sensor), while KB-002 attributes sustained spikes correlated with low coolant level to an actual leak (fix: schedule_service_visit). Since coolant level never dropped and the spike was a single isolated reading rather than sustained, the evidence matches KB-001's pattern, not KB-002's. Recommending restart_sensor as the more evidence-supported option, but flagging the KB conflict for visibility -- if the spike recurs or coolant level begins dropping, a service visit should be scheduled instead."
+              }
+            }
+          ],
+          "usage": {
+            "input_tokens": 3302,
+            "output_tokens": 645,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0
+          }
+        }
+      ]
+    }
+  ]
+}

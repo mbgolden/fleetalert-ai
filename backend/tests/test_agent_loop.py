@@ -575,3 +575,39 @@ def test_a_step_functions_retry_after_a_crash_actually_reruns(dynamodb_tables: N
     result = run_investigation("ALERT-23", _whitelisted_run("ALERT-23"))
 
     assert result["outcome"] == "awaiting_confirmation"
+
+
+def test_tool_calls_cut_off_at_max_tokens_are_never_run(dynamodb_tables: None) -> None:
+    """A response that hits max_tokens can carry a half-written tool call
+    (a live eval run saw propose_fix arrive with only fix_id). It must not
+    run; the model is told why and retries within the same loop."""
+    _seed(alert_id="ALERT-T", machine_id="M-1002", alert_type="temperature_drift")
+    truncated = response(
+        text_block("Long reasoning..."),
+        tool_use_block("propose_fix", {"fix_id": "send_diagnostic_reset"}, "cut"),
+    )
+    truncated.stop_reason = "max_tokens"
+    client = FakeAnthropicClient(
+        [
+            truncated,
+            response(
+                tool_use_block(
+                    "propose_fix",
+                    {"fix_id": "send_diagnostic_reset", "confidence": 0.8, "description": "Matches KB-003."},
+                    "ok",
+                )
+            ),
+        ]
+    )
+
+    result = run_investigation("ALERT-T", client)
+
+    assert result["outcome"] == "awaiting_confirmation"
+    retry_messages = client.messages.calls[1]["messages"]
+    tool_result = retry_messages[-1]["content"][0]
+    assert tool_result["tool_use_id"] == "cut"
+    assert tool_result["is_error"] is True
+    assert "cut off" in tool_result["content"]
+    names = event_names("ALERT-T")
+    assert "guardrail.truncated_output" in names
+    assert names.count("propose_fix") == 1  # only the complete call ran

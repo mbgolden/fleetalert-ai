@@ -13,6 +13,7 @@ const NAME_LABELS: Record<string, string> = {
   propose_fix: "Proposed a fix",
   "guardrail.whitelist": "Whitelist check",
   "guardrail.not_previously_rejected": "Already-rejected check",
+  "guardrail.truncated_output": "Cut-off tool call skipped",
   request_confirmation: "Requested human confirmation",
   awaiting_human_confirmation: "Paused for human confirmation",
   confirm: "Confirmed",

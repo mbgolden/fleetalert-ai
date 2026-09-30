@@ -1,0 +1,66 @@
+{
+  "scenario_id": "cabin-drift",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-09-30T12:52:05+00:00",
+  "rounds": [
+    {
+      "fingerprint": "034e7eb328d74799",
+      "responses": [
+        {
+          "stop_reason": "tool_use",
+          "content": [
+            {
+              "type": "tool_use",
+              "id": "toolu_014s6raGUDv9Dr1TUkpn146x",
+              "name": "get_telemetry_snapshot",
+              "input": {
+                "window_minutes": 180
+              }
+            },
+            {
+              "type": "tool_use",
+              "id": "toolu_01EoekoJ18uYeGMys5bm4tEe",
+              "name": "search_knowledge_base",
+              "input": {
+                "symptom_description": "temperature_drift"
+              }
+            },
+            {
+              "type": "tool_use",
+              "id": "toolu_01AyYU8Y98g13zy3KMMwBzQZ",
+              "name": "get_service_history",
+              "input": {}
+            }
+          ],
+          "usage": {
+            "input_tokens": 1467,
+            "output_tokens": 155,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0
+          }
+        },
+        {
+          "stop_reason": "tool_use",
+          "content": [
+            {
+              "type": "tool_use",
+              "id": "toolu_01Eqv16qp3Awg21J9u4rxMD3",
+              "name": "propose_fix",
+              "input": {
+                "fix_id": "send_diagnostic_reset",
+                "confidence": 0.85,
+                "description": "Telemetry shows cabin_temp_c climbing steadily from ~2\u00b0C to 5.8\u00b0C over 3 hours while controller_reading_c stays oscillating tightly around the 2\u00b0C setpoint (1.8-2.2\u00b0C) \u2014 the controller \"believes\" it is holding setpoint even as the cabin diverges, and compressor current is actually tapering off (11.1A\u21928.5A), confirming the controller is under-cooling based on a stale/miscalibrated sensor reading rather than actual cabin conditions. This matches KB-003's documented pattern for controller sensor calibration drift, for which the fix is a diagnostic reset to re-run self-calibration. KB-003 explicitly excludes this fix when controller reading tracks the cabin probe (that would indicate a refrigeration circuit fault needing a technician instead) \u2014 here the two readings clearly diverge, so the diagnostic-reset branch applies. No conflicting KB entries were found and no prior service history exists for this unit."
+              }
+            }
+          ],
+          "usage": {
+            "input_tokens": 6061,
+            "output_tokens": 823,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0
+          }
+        }
+      ]
+    }
+  ]
+}

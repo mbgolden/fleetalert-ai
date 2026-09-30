@@ -20,7 +20,7 @@ def _record(scenario_id: str, tmp_path: Path) -> Cassette:
             response(
                 tool_use_block(
                     "propose_fix",
-                    {"fix_id": "send_diagnostic_reset", "description": "Matches KB-003.", "confidence": 0.8},
+                    {"fix_id": "send_diagnostic_reset", "description": "Cabin probe 5.2 C while the controller reads 2.0 C: KB-003 calibration drift.", "confidence": 0.8},
                     "t3",
                 )
             ),

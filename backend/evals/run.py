@@ -84,7 +84,8 @@ def main(argv: list[str] | None = None) -> int:
             BASELINE_PATH.write_text(json.dumps(baseline_from(suite), indent=2) + "\n")
             print(f"updated {BASELINE_PATH}")
         RESULTS_DIR.mkdir(exist_ok=True)
-        dated = RESULTS_DIR / f"{suite.started_at[:10]}-{suite.model}.json"
+        stamp = suite.started_at[:16].replace(":", "")  # e.g. 2026-09-30T1238
+        dated = RESULTS_DIR / f"{stamp}-{suite.model}.json"
         dated.write_text(json.dumps(results, indent=2) + "\n")
         print(f"wrote {dated}")
 

@@ -1,0 +1,66 @@
+{
+  "scenario_id": "coolant-leak",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-09-30T12:51:29+00:00",
+  "rounds": [
+    {
+      "fingerprint": "383f6da14dfc4f90",
+      "responses": [
+        {
+          "stop_reason": "tool_use",
+          "content": [
+            {
+              "type": "tool_use",
+              "id": "toolu_01WUdJCmBTqP8L95YvQhokVi",
+              "name": "get_telemetry_snapshot",
+              "input": {
+                "window_minutes": 60
+              }
+            },
+            {
+              "type": "tool_use",
+              "id": "toolu_01QrgzME9xkd2cUdQGe1hYwP",
+              "name": "search_knowledge_base",
+              "input": {
+                "symptom_description": "coolant_temp_spike"
+              }
+            },
+            {
+              "type": "tool_use",
+              "id": "toolu_01FK78efLK3wPGgpBMKtmVG5",
+              "name": "get_service_history",
+              "input": {}
+            }
+          ],
+          "usage": {
+            "input_tokens": 1455,
+            "output_tokens": 158,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0
+          }
+        },
+        {
+          "stop_reason": "tool_use",
+          "content": [
+            {
+              "type": "tool_use",
+              "id": "toolu_01248ufkNntyeDgaSbQ4bmfo",
+              "name": "propose_fix",
+              "input": {
+                "fix_id": "schedule_service_visit",
+                "confidence": 0.85,
+                "description": "Telemetry shows a sustained, progressive rise in coolant temp from 90\u00b0C to 114\u00b0C over ~2 hours, paired with a steady drop in coolant level from 96% to 76% \u2014 not a brief transient. Oil pressure and RPM remain stable, ruling out broader engine failure. KB has two conflicting entries: KB-001 attributes spikes to a sensor calibration glitch (fix: restart_sensor), while KB-002 links sustained spikes correlated with falling coolant level to a genuine leak (fix: schedule_service_visit). The data clearly matches KB-002's pattern (correlated, sustained, non-transient), so despite the conflict I favor the more cautious option of physical inspection rather than assuming a sensor fault."
+              }
+            }
+          ],
+          "usage": {
+            "input_tokens": 3319,
+            "output_tokens": 538,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0
+          }
+        }
+      ]
+    }
+  ]
+}

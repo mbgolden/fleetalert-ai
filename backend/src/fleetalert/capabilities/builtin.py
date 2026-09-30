@@ -19,23 +19,30 @@ from fleetalert.whitelist import ALLOWED_FIX_TYPES, is_whitelisted
 
 OWNER = "FleetAlert agents platform (Michael Golden)"
 
+# Field order is deliberate: the model writes tool input in schema order, so
+# the short fields come before the long rationale. With description second,
+# a response cut off at max_tokens lost confidence every time (first
+# recorded eval run; see docs/decisions/ADR-0012).
 _FIX_FIELDS: dict[str, Any] = {
     "fix_id": {
         "type": "string",
         "minLength": 1,
         "description": "The fix type to apply, e.g. 'restart_sensor'.",
     },
-    "description": {
-        "type": "string",
-        "minLength": 1,
-        "pattern": r"\S",
-        "description": "Root cause summary and rationale for this fix.",
-    },
     "confidence": {
         "type": "number",
         "minimum": 0,
         "maximum": 1,
         "description": "Confidence in this fix, from 0 to 1.",
+    },
+    "description": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": r"\S",
+        "description": (
+            "Root cause and rationale in 2-5 sentences (under 150 words): the "
+            "telemetry values and KB entries that support this fix."
+        ),
     },
 }
 
@@ -210,7 +217,7 @@ BUILTIN_CAPABILITIES: list[Capability] = [
             f"{', '.join(sorted(ALLOWED_FIX_TYPES))}. Any other fix_id will be "
             "automatically routed to human support instead of executed."
         ),
-        input_schema=_object(_FIX_FIELDS, ["fix_id", "description", "confidence"]),
+        input_schema=_object(_FIX_FIELDS, ["fix_id", "confidence", "description"]),
         output_schema=_object(
             {"received": {"const": True}, "fix_id": {"type": "string"}}, ["received", "fix_id"]
         ),
@@ -227,7 +234,7 @@ BUILTIN_CAPABILITIES: list[Capability] = [
             "token the human's confirm must present. Invoked by the loop, never "
             "by the model."
         ),
-        input_schema=_object(_FIX_FIELDS, ["fix_id", "description", "confidence"]),
+        input_schema=_object(_FIX_FIELDS, ["fix_id", "confidence", "description"]),
         output_schema={
             "type": "object",
             "properties": {
