@@ -45,6 +45,9 @@ class Scenario:
     # Which entry point starts the investigation. The email scenario's
     # alert carries the inbound email, which the loop adds to the prompt.
     entry_point: str = "web"
+    # A telemetry profile for the autonomous detector to generate and detect
+    # before the investigation (its alert doesn't exist until then).
+    detector_profile: str | None = None
 
 
 SCENARIOS: tuple[Scenario, ...] = (
@@ -138,6 +141,21 @@ SCENARIOS: tuple[Scenario, ...] = (
         requires_conflict_note=True,
         entry_point="email",
     ),
+    Scenario(
+        scenario_id="autonomous-leak",
+        alert_id="ALERT-1007",
+        summary="The telemetry detector catches a coolant leak on its own",
+        why=(
+            "No human raised this one: the detector's coolant_temp_c >= 105 rule trips on "
+            "several readings. Behind it, temperature climbs as coolant level falls "
+            "96% -> 79% and stays low: KB-002's genuine coolant loss, not KB-001's glitch "
+            "-> schedule_service_visit, with the KB conflict noted."
+        ),
+        rounds=(RoundExpectation(frozenset({"schedule_service_visit"})),),
+        requires_conflict_note=True,
+        entry_point="autonomous",
+        detector_profile="coolant_leak",
+    ),
 )
 
 
@@ -169,6 +187,7 @@ def scenarios_as_json() -> str:
                     "summary": s.summary,
                     "why": s.why,
                     "entry_point": s.entry_point,
+                    "detector_profile": s.detector_profile,
                     "rounds": [
                         {"acceptable": sorted(r.acceptable), "reject_with": r.reject_with} for r in s.rounds
                     ],

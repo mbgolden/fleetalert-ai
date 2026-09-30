@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 
-import { resetDemoData, simulateInboundEmail } from "./api";
+import { resetDemoData, runDetector, simulateInboundEmail } from "./api";
 
 export default function App() {
   const [resetting, setResetting] = useState(false);
   const [emailing, setEmailing] = useState(false);
   const [headerNotice, setHeaderNotice] = useState<string | null>(null);
+  const [detecting, setDetecting] = useState(false);
   const navigate = useNavigate();
 
   // Runs the same code as the 4-hourly scheduled email, then opens the
@@ -26,6 +27,25 @@ export default function App() {
       });
     } finally {
       setEmailing(false);
+    }
+  };
+
+  // Same code as the 4-hourly scheduled detector run; the button always
+  // generates an anomaly, so there's something to investigate.
+  const handleDetect = async () => {
+    setDetecting(true);
+    setHeaderNotice(null);
+    try {
+      const run = await runDetector();
+      if (run.budget_exhausted || !run.alert_id) {
+        setHeaderNotice(run.reason ?? "The detector found nothing unusual in the latest readings.");
+        return;
+      }
+      navigate(`/alerts/${run.alert_id}`, {
+        state: { notice: run.started ? "The telemetry detector raised this alert." : run.reason },
+      });
+    } finally {
+      setDetecting(false);
     }
   };
 
@@ -64,6 +84,9 @@ export default function App() {
         <div className="header-actions">
           <button className="email-button" disabled={emailing} onClick={handleEmail}>
             {emailing ? "Sending…" : "Simulate inbound email"}
+          </button>
+          <button className="detector-button" disabled={detecting} onClick={handleDetect}>
+            {detecting ? "Detecting…" : "Run telemetry detector"}
           </button>
           <button className="reset-button" disabled={resetting} onClick={handleReset}>
             {resetting ? "Resetting…" : "Reset Alerts"}

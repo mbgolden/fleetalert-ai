@@ -174,3 +174,14 @@ def test_tool_call_markup_in_a_rationale_fails() -> None:
     )
     assert not passed
     assert grades["rationale free of tool-call markup"].detail == "found </parameter"
+
+
+def test_autonomous_scenario_detects_then_investigates() -> None:
+    client = _investigation(
+        "schedule_service_visit", "KB-001 and KB-002 disagree; level fell from 96% to 79% while temp hit 115 C."
+    )
+    passed, _ = _grade("autonomous-leak", client)
+    assert passed
+    opening = client.messages.calls[0]["messages"][0]["content"]
+    assert "rule-based telemetry detector" in opening
+    assert "coolant_temp_c >= 105" in opening

@@ -91,6 +91,12 @@ def records_for_span(span: dict[str, Any]) -> list[str]:
     return lines
 
 
+def emit_detector_run(result: str) -> None:
+    """One telemetry detector run: the alert type raised, or "normal"."""
+    if config.metrics_enabled():
+        print(_emf({"Result": result}, [[], ["Result"]], {"DetectorRuns": (1, "Count")}), flush=True)
+
+
 def emit_for_span(span: dict[str, Any]) -> None:
     if not config.metrics_enabled():
         return

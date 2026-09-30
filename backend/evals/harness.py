@@ -13,15 +13,20 @@ import os
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any
 
 from moto import mock_aws
 
 from evals.scenarios import ROUTED, Scenario
-from fleetalert import repositories
+from fleetalert import autonomous, repositories
 from fleetalert.agent.loop import reject_fix, run_investigation
 from fleetalert.seed_data import reseed_demo_data
 from fleetalert.tracing import Stopwatch
+
+# Evals generate detector telemetry at a fixed moment, so every trial (and
+# every recording's fingerprint) sees identical readings.
+EVAL_DETECTOR_NOW = datetime(2026, 9, 18, 6, 0, tzinfo=UTC)
 
 # (round index) -> model client for that round.
 ClientFactory = Callable[[int], Any]
@@ -74,6 +79,10 @@ def run_trial(scenario: Scenario, client_for_round: ClientFactory, *, model: str
     watch = Stopwatch()
     with isolated_demo_data():
         try:
+            if scenario.detector_profile:
+                autonomous.run_detector(
+                    lambda *_args: None, trigger="eval", profile=scenario.detector_profile, now=EVAL_DETECTOR_NOW
+                )
             for index, expectation in enumerate(scenario.rounds):
                 outcome = run_investigation(
                     scenario.alert_id, client_for_round(index), model=model, entry_point=scenario.entry_point

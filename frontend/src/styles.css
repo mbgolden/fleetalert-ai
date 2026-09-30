@@ -1010,3 +1010,57 @@ button.email-button:hover:not(:disabled) {
     width: 100%;
   }
 }
+
+/* --- Autonomous entry point --- */
+
+button.detector-button {
+  background: transparent;
+  color: #2dd4bf;
+  border: 1px solid #2dd4bf;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+button.detector-button:hover:not(:disabled) {
+  background: color-mix(in srgb, #2dd4bf 12%, transparent);
+  box-shadow: none;
+}
+
+.detection-card {
+  margin: 1rem 0 1.5rem;
+  padding: 1rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, #2dd4bf 45%, var(--border));
+  border-left: 3px solid #2dd4bf;
+  border-radius: 10px;
+}
+
+.detection-card p {
+  margin: 0;
+}
+
+.detection-rule {
+  margin-top: 0.1rem !important;
+  font-weight: 700;
+}
+
+.detection-rule code {
+  font-size: 0.9em;
+  padding: 0.05rem 0.35rem;
+  background: var(--bg);
+  border-radius: 4px;
+}
+
+.detection-meta {
+  margin-top: 0.3rem !important;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.detection-note {
+  margin-top: 0.7rem !important;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}

@@ -27,6 +27,13 @@ resource "aws_dynamodb_table" "telemetry" {
     type = "S"
   }
 
+  # Readings the autonomous detector generates carry expires_at (2 days);
+  # seeded demo readings don't, so they never expire (ADR-0020).
+  ttl {
+    attribute_name = "expires_at"
+    enabled        = true
+  }
+
   tags = var.tags
 }
 

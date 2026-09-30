@@ -55,7 +55,14 @@ def _telemetry(tool_input: dict[str, Any], ctx: CapabilityContext) -> dict[str, 
     readings = repositories.get_telemetry_snapshot(
         ctx.alert["machine_id"], (created_at - window).isoformat(), (created_at + window).isoformat()
     )
-    return {"readings": readings}
+    # Storage-only attributes (e.g. the generated readings' expires_at)
+    # aren't evidence, so they don't reach the model.
+    return {
+        "readings": [
+            {"machine_id": r["machine_id"], "timestamp": r["timestamp"], "signal_readings": r["signal_readings"]}
+            for r in readings
+        ]
+    }
 
 
 def _knowledge_base(tool_input: dict[str, Any], ctx: CapabilityContext) -> dict[str, Any]:
