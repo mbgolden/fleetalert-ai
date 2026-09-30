@@ -50,6 +50,9 @@ export default function AlertList() {
             {usage.exhausted && " (used up, resets at 00:00 UTC)"}
           </p>
         )}
+        <Link to="/evals" className="overview-link overview-link-secondary">
+          See the eval results &rarr;
+        </Link>
         <a
           href="https://10finger.dev/project/fleetalert-ai"
           target="_blank"

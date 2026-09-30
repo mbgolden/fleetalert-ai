@@ -8,7 +8,9 @@ reviewer can challenge the expectation itself, not just the result.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
+from pathlib import Path
 
 # The label a round gets when it ends in routed_to_support instead of a
 # proposal awaiting confirmation.
@@ -147,3 +149,41 @@ def by_id(scenario_ids: list[str] | None) -> list[Scenario]:
     if unknown:
         raise ValueError(f"Unknown scenario(s): {', '.join(unknown)}. Known: {', '.join(known)}")
     return [known[sid] for sid in scenario_ids]
+
+
+SCENARIOS_JSON = Path(__file__).parent / "scenarios.json"
+
+
+def scenarios_as_json() -> str:
+    """The scenario definitions as JSON, for the demo site's Evals page.
+
+    Regenerate with `uv run python -m evals.scenarios` after editing
+    SCENARIOS; a test fails if the committed file drifts.
+    """
+    return (
+        json.dumps(
+            [
+                {
+                    "scenario_id": s.scenario_id,
+                    "alert_id": s.alert_id,
+                    "summary": s.summary,
+                    "why": s.why,
+                    "entry_point": s.entry_point,
+                    "rounds": [
+                        {"acceptable": sorted(r.acceptable), "reject_with": r.reject_with} for r in s.rounds
+                    ],
+                    "requires_conflict_note": s.requires_conflict_note,
+                    "max_confidence": s.max_confidence,
+                    "max_cost_usd_per_round": s.max_cost_usd_per_round,
+                }
+                for s in SCENARIOS
+            ],
+            indent=2,
+        )
+        + "\n"
+    )
+
+
+if __name__ == "__main__":
+    SCENARIOS_JSON.write_text(scenarios_as_json())
+    print(f"wrote {SCENARIOS_JSON}")

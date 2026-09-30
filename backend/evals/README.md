@@ -30,6 +30,7 @@ objectively right answer.
 Gating (a trial fails if any fail):
 - **Outcome.** The round ended in an acceptable fix or routing.
 - **Evidence first.** Telemetry and the knowledge base were both read successfully before proposing.
+- **Rationale free of tool-call markup.** No `</parameter>`-style fragments in the text a human reads.
 - **Rationale cites evidence.** The proposal text is at least 60 characters and names a KB entry or a reading, since it is what a human decides on.
 - **KB conflict acknowledged** (coolant scenarios). The proposal says the two KB entries disagree.
 - **Respected rejection.** It didn't re-propose a rejected fix. The guardrail would block that anyway; this checks whether it had to.

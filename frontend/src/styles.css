@@ -680,3 +680,333 @@ button.email-button:hover:not(:disabled) {
   color: var(--medium);
   font-size: 0.9rem;
 }
+
+/* --- Navigation --- */
+
+.app-nav {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.6rem;
+  font-size: 0.9rem;
+}
+
+.app-nav a {
+  color: var(--text-dim);
+  padding-bottom: 0.15rem;
+  border-bottom: 2px solid transparent;
+}
+
+.app-nav a:hover {
+  color: var(--text);
+}
+
+.app-nav a.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.overview-link-secondary {
+  margin-right: 1.25rem;
+}
+
+/* --- Evals page --- */
+
+.evals-intro {
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+.evals-hint {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin-top: -0.5rem;
+}
+
+.eval-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.75rem;
+  margin: 1.5rem 0 1rem;
+}
+
+.eval-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1rem 1.1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.eval-stat-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.eval-stat-value.pass {
+  color: var(--low);
+}
+
+.eval-stat-value.fail {
+  color: var(--high);
+}
+
+.eval-stat-label {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.eval-run-note {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.eval-scenarios {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.eval-scenario {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.eval-scenario > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.9rem;
+  padding: 0.8rem 1rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.eval-scenario > summary::-webkit-details-marker {
+  display: none;
+}
+
+.eval-scenario > summary::before {
+  content: "▸";
+  color: var(--text-dim);
+  transition: transform 0.15s ease;
+}
+
+.eval-scenario[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.eval-scenario-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.eval-scenario-summary {
+  flex: 1;
+  min-width: 12rem;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+.eval-pass {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.eval-pass.all {
+  color: var(--low);
+}
+
+.eval-pass.some {
+  color: var(--medium);
+}
+
+.eval-pass.none {
+  color: var(--high);
+}
+
+.eval-scenario-meta {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.eval-scenario-body {
+  padding: 0 1rem 1rem 2.2rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.eval-trials {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.eval-trial {
+  padding: 0.6rem 0.8rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--low);
+  border-radius: 8px;
+}
+
+.eval-trial.failed {
+  border-left-color: var(--high);
+}
+
+.eval-trial-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.7rem;
+  align-items: baseline;
+  font-size: 0.85rem;
+}
+
+.eval-trial-status {
+  font-weight: 700;
+  color: var(--low);
+}
+
+.eval-trial.failed .eval-trial-status {
+  color: var(--high);
+}
+
+.eval-trial-outcome {
+  font-weight: 600;
+}
+
+.eval-trial-meta {
+  margin-left: auto;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.eval-grade {
+  margin: 0.3rem 0 0;
+  font-size: 0.82rem;
+}
+
+.eval-grade.failing {
+  color: var(--high);
+}
+
+.eval-grade.warning {
+  color: var(--medium);
+}
+
+.eval-rationale {
+  margin: 0.5rem 0 0;
+  padding-left: 0.7rem;
+  border-left: 2px solid var(--accent);
+  font-size: 0.84rem;
+  line-height: 1.45;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.eval-rationale span {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.eval-history {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.eval-history th,
+.eval-history td {
+  text-align: left;
+  padding: 0.55rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.eval-history th {
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.eval-history tbody tr {
+  cursor: pointer;
+}
+
+.eval-history tbody tr:hover {
+  background: var(--surface);
+}
+
+.eval-history tbody tr.selected {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.eval-history td:nth-child(1),
+.eval-history td:nth-child(3),
+.eval-history td:nth-child(4) {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.eval-findings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+
+.eval-finding {
+  padding: 1rem 1.1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.87rem;
+  line-height: 1.5;
+}
+
+.eval-finding h3 {
+  margin: 0 0 0.6rem;
+  font-size: 1rem;
+}
+
+.eval-finding p {
+  margin: 0 0 0.5rem;
+  color: var(--text-dim);
+}
+
+.eval-finding strong {
+  color: var(--text);
+}
+
+.eval-history-wrap {
+  overflow-x: auto;
+}
+
+@media (max-width: 560px) {
+  .eval-history th:nth-child(2),
+  .eval-history td:nth-child(2) {
+    display: none;
+  }
+
+  .eval-history td:nth-child(1),
+  .eval-history td:nth-child(3) {
+    white-space: normal;
+  }
+
+  .eval-history {
+    font-size: 0.8rem;
+  }
+
+  .eval-trial-meta {
+    margin-left: 0;
+    width: 100%;
+  }
+}

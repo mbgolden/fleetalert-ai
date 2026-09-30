@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 
 import { resetDemoData, simulateInboundEmail } from "./api";
 
@@ -54,6 +54,12 @@ export default function App() {
           <p className="app-subtitle">
             Agentic investigation demo — fixed scenarios only, no free-text input.
           </p>
+          <nav className="app-nav">
+            <NavLink to="/" end>
+              Alerts
+            </NavLink>
+            <NavLink to="/evals">Evals</NavLink>
+          </nav>
         </div>
         <div className="header-actions">
           <button className="email-button" disabled={emailing} onClick={handleEmail}>

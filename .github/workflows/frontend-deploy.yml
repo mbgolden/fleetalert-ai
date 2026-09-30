@@ -10,6 +10,10 @@ on:
     branches: [main]
     paths:
       - "frontend/**"
+      # The Evals page is built from these, so a newly recorded run
+      # redeploys the site.
+      - "backend/evals/results/**"
+      - "backend/evals/scenarios.json"
   workflow_dispatch:
 
 concurrency:

@@ -123,6 +123,10 @@ bug that the pass rate alone would have hidden.
   - A new gating grader requires every rationale to be at least 60
     characters and cite a KB entry or a reading.
   - Truncations count toward the reported tool-error warning.
+- Reading the same recordings later (on the demo's Evals page) showed a
+  second symptom. Trial #1 recovered, but its rationale ended with leaked
+  tool-call syntax (`</parameter></invoke>`). Another gating grader now
+  rejects any rationale containing tool-call markup.
 - These changes alter the prompt and tools, so the replay tier now reports
   all six cassettes as stale and skips them. That is its designed behaviour.
   They are re-recorded by the next live run.
