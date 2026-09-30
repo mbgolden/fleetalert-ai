@@ -1,0 +1,31 @@
+# Backlog
+
+Known follow-ups, each with the evidence that raised it. When an item is
+done, remove it and point to the commit or ADR in the PR.
+
+## Split confidence into diagnosis and action
+Raised 2026-09-30 by the eval harness (ADR-0012).
+
+`compressor-no-kb` has no KB entry, so the calibration check expects
+confidence of 0.7 or below. Sonnet 5 scored 0.75-0.82 in all three trials
+of the 12:51 recorded run, even though the system prompt asks for 0.6 or
+below. The rationales explain why: Claude is fairly sure a technician
+should look at a faulted compressor (the action), and unsure of the root
+cause (the diagnosis). One number can't hold both, so the check is
+measuring the wrong thing.
+
+- Replace `confidence` on `propose_fix` with `diagnosis_confidence` (how
+  sure the root cause is right) and `action_confidence` (how sure this fix
+  is the right next step).
+- Calibration grader: without KB support, `diagnosis_confidence` ≤ 0.6.
+  `action_confidence` can stay high.
+- Show both in the UI's proposed-fix box and trace.
+- Update `request_confirmation`, `docs/capabilities/propose_fix.md`, the
+  tests and the evals, and re-record the cassettes.
+- Consider doing this with the Sonnet 5.5 comparison run, so both models
+  are measured on the new contract.
+
+## Don't retry `GuardrailViolation` in Step Functions
+From `docs/capabilities/execute_fix.md`. The task Retry matches
+`States.ALL`, so a deterministic refusal is retried six times before
+failing. It should be a named error excluded from Retry.
