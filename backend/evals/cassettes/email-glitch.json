@@ -1,0 +1,66 @@
+{
+  "scenario_id": "email-glitch",
+  "model": "claude-sonnet-5",
+  "recorded_at": "2026-09-30T19:31:12+00:00",
+  "rounds": [
+    {
+      "fingerprint": "717e420e2cfebb8b",
+      "responses": [
+        {
+          "stop_reason": "tool_use",
+          "content": [
+            {
+              "type": "tool_use",
+              "id": "toolu_01Ke12GA9WG7qT1AsE1C7Xxo",
+              "name": "get_telemetry_snapshot",
+              "input": {
+                "window_minutes": 180
+              }
+            },
+            {
+              "type": "tool_use",
+              "id": "toolu_01FHcVRW712MxLEHmVnQf8QH",
+              "name": "search_knowledge_base",
+              "input": {
+                "symptom_description": "coolant temperature spike brief warning then normal, highway driving, diesel engine"
+              }
+            },
+            {
+              "type": "tool_use",
+              "id": "toolu_018zeepnohJPtabdxWjc3yZ4",
+              "name": "get_service_history",
+              "input": {}
+            }
+          ],
+          "usage": {
+            "input_tokens": 1770,
+            "output_tokens": 175,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0
+          }
+        },
+        {
+          "stop_reason": "tool_use",
+          "content": [
+            {
+              "type": "tool_use",
+              "id": "toolu_01SGK9pEEWmVnhvhHYLJdQGH",
+              "name": "propose_fix",
+              "input": {
+                "fix_id": "restart_sensor",
+                "confidence": 0.85,
+                "description": "Telemetry shows a single transient spike to 121\u00b0C at 12:00, with readings immediately before (90\u00b0C) and after (89.5\u00b0C) at normal baseline, and coolant_level_pct flat at 96% throughout the entire window (no drop indicating leak). Oil pressure and RPM show no corresponding disturbance. KB has two conflicting entries: KB-001 attributes transient spikes with no real temperature rise to a sensor calibration glitch (fix: restart_sensor), while KB-002 attributes sustained spikes correlated with low coolant level to a genuine leak (fix: schedule_service_visit). Since the spike here was a single isolated reading with stable coolant level, evidence matches KB-001, not KB-002. Driver report of no steam/smell and full reservoir corroborates this. Recommending sensor restart rather than a service visit."
+              }
+            }
+          ],
+          "usage": {
+            "input_tokens": 5996,
+            "output_tokens": 589,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0
+          }
+        }
+      ]
+    }
+  ]
+}
