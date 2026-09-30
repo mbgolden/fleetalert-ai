@@ -30,7 +30,8 @@ risk on a public demo.
 ## Repo layout
 
 ```
-backend/    Lambda handlers, agent loop, tool implementations, tests
+backend/    Lambda handlers, agent loop, capabilities, tests
+backend/evals/   Golden-scenario eval harness, live + replay tiers (ADR-0012)
 frontend/   React app (alert list, live trace view, confirm/reject, audit log)
 infra/      Terraform modules + single `demo` environment
 docs/decisions/   ADR log

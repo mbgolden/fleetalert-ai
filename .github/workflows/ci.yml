@@ -16,7 +16,7 @@ jobs:
       - uses: astral-sh/setup-uv@v3
       - run: uv sync --group dev
       - run: uv run ruff check .
-      - run: uv run mypy src
+      - run: uv run mypy src evals
       - run: uv run bandit -r src
       - run: uv run pytest
       - name: Every capability and handler has tests and a contract
