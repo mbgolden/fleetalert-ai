@@ -147,3 +147,10 @@ def test_rationale_without_any_evidence_fails() -> None:
     )
     assert not passed
     assert not grades["rationale cites evidence"].passed
+
+
+def test_email_scenario_runs_through_the_email_entry_point() -> None:
+    client = _investigation("restart_sensor", "KB-001 and KB-002 disagree; one 121 C reading, level flat at 96%.")
+    passed, _ = _grade("email-glitch", client)
+    assert passed
+    assert "<inbound_email>" in client.messages.calls[0]["messages"][0]["content"]

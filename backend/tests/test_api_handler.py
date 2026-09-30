@@ -112,6 +112,8 @@ def test_get_status_route(dynamodb_tables: None) -> None:
         "confidence": "0.9",
         "root_cause_summary": "Matches KB-003.",
         "confirmation_token": "tok-abc",
+        "source": "monitoring",
+        "inbound_email": None,
     }
 
 

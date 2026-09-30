@@ -16,11 +16,13 @@ from typing import Any
 
 import boto3
 
-from fleetalert import config, repositories
+from fleetalert import repositories
 from fleetalert.agent.guardrails import GuardrailViolation
 from fleetalert.agent.loop import confirm_fix, reject_fix
+from fleetalert.email_intake import deliver_inbound_email
 from fleetalert.logging_config import alert_logger, configure_logging
 from fleetalert.seed_data import reseed_demo_data
+from fleetalert.workflow import start_investigation
 
 configure_logging()
 _logger = logging.getLogger(__name__)
@@ -52,6 +54,9 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
             alert_id = path_params["alert_id"]
             return _json(200, {"alert_id": alert_id, "spans": repositories.get_spans_for_alert(alert_id)})
 
+        if route_key == "POST /demo/email":
+            result = deliver_inbound_email(start_investigation, trigger="button")
+            return _json(202 if result["started"] else 409, result)
 
         if route_key == "POST /demo/reset":
             return _reset_demo_data()
@@ -78,11 +83,7 @@ def _list_alerts_with_machine_info() -> list[dict[str, Any]]:
 
 def _start_investigation(alert_id: str) -> dict[str, Any]:
     log = alert_logger(__name__, alert_id)
-    state_machine_arn = config.require(config.state_machine_arn(), "STATE_MACHINE_ARN")
-    boto3.client("stepfunctions").start_execution(
-        stateMachineArn=state_machine_arn,
-        input=json.dumps({"alert_id": alert_id, "entry_point": "web"}),
-    )
+    start_investigation(alert_id, "web")
     log.info("investigation triggered via API")
     return _json(202, {"alert_id": alert_id, "status": "investigation_started"})
 
@@ -100,6 +101,8 @@ def _get_status(alert_id: str) -> dict[str, Any]:
             "confidence": alert.get("confidence"),
             "root_cause_summary": alert.get("root_cause_summary"),
             "confirmation_token": alert.get("confirmation_token"),
+            "source": alert.get("source", "monitoring"),
+            "inbound_email": alert.get("inbound_email"),
         },
     )
 

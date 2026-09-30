@@ -2,6 +2,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export type AlertStatus =
   | "open"
+  | "queued"
   | "investigating"
   | "awaiting_confirmation"
   | "resolved"
@@ -19,6 +20,15 @@ export interface Alert {
   severity: "low" | "medium" | "high";
   status: AlertStatus;
   created_at: string;
+  source?: "monitoring" | "email";
+}
+
+// The seeded inbound email behind an email-raised alert (ADR-0016).
+export interface InboundEmail {
+  from: string;
+  subject: string;
+  received_at: string;
+  body: string;
 }
 
 export interface AlertStatusResponse {
@@ -28,6 +38,8 @@ export interface AlertStatusResponse {
   confidence: string | null;
   root_cause_summary: string | null;
   confirmation_token: string | null;
+  source: "monitoring" | "email";
+  inbound_email: InboundEmail | null;
 }
 
 export type SpanKind =
@@ -80,8 +92,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) },
   });
   if (!resp.ok) {
-    const body = await resp.json().catch(() => ({}) as { error?: string });
-    throw new ApiError(body.error ?? `Request failed: ${resp.status}`, resp.status);
+    const body = await resp.json().catch(() => ({}) as { error?: string; reason?: string });
+    throw new ApiError(body.error ?? body.reason ?? `Request failed: ${resp.status}`, resp.status);
   }
   return (await resp.json()) as T;
 }
@@ -117,6 +129,25 @@ export function rejectFix(alertId: string, reason?: string): Promise<{ alert_id:
 
 export function getTrace(alertId: string): Promise<{ alert_id: string; spans: Span[] }> {
   return request(`/demo/alerts/${alertId}/trace`);
+}
+
+export interface EmailDelivery {
+  started: boolean;
+  alert_id: string;
+  reason?: string;
+}
+
+// 202 when the email starts an investigation, 409 when the last one is
+// still being handled; both are normal outcomes, so neither throws.
+export async function simulateInboundEmail(): Promise<EmailDelivery> {
+  try {
+    return await request<EmailDelivery>("/demo/email", { method: "POST" });
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 409) {
+      return { started: false, alert_id: "ALERT-1006", reason: err.message };
+    }
+    throw err;
+  }
 }
 
 export function resetDemoData(): Promise<{ outcome: string }> {

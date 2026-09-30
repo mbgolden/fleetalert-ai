@@ -75,7 +75,9 @@ def run_trial(scenario: Scenario, client_for_round: ClientFactory, *, model: str
     with isolated_demo_data():
         try:
             for index, expectation in enumerate(scenario.rounds):
-                outcome = run_investigation(scenario.alert_id, client_for_round(index), model=model)
+                outcome = run_investigation(
+                    scenario.alert_id, client_for_round(index), model=model, entry_point=scenario.entry_point
+                )
                 alert = repositories.get_alert(scenario.alert_id) or {}
                 spans = repositories.get_trace(str(alert.get("current_trace_id")))
                 trial.rounds.append(RoundRecord(outcome=outcome, spans=spans))
