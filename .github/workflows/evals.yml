@@ -1,0 +1,86 @@
+name: Evals (live)
+
+# Real Claude calls against the golden scenarios (backend/evals). Costs
+# roughly $0.60 per run at 3 trials, so it runs only when the agent's
+# behaviour could have changed, weekly to catch model drift, and on demand.
+# The free replay tier runs inside the normal CI pytest step on every PR.
+on:
+  pull_request:
+    paths:
+      - backend/src/fleetalert/agent/**
+      - backend/src/fleetalert/capabilities/**
+      - backend/src/fleetalert/seed_data.py
+      - backend/src/fleetalert/repositories.py
+      - backend/evals/*.py
+      - .github/workflows/evals.yml
+  schedule:
+    - cron: "0 14 * * 1" # Mondays 14:00 UTC
+  workflow_dispatch:
+    inputs:
+      model:
+        description: Model to evaluate (blank = the deployed default)
+        required: false
+        default: ""
+      trials:
+        description: Trials per scenario (1-5)
+        required: false
+        default: "3"
+      record:
+        description: Commit cassettes, baseline and results to this branch (not main)
+        type: boolean
+        default: false
+
+concurrency:
+  group: evals-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write # only used by the record step
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      FLEETALERT_MODEL: ${{ inputs.model }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync --group dev
+      - name: Check the API key secret is set
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error::Add an ANTHROPIC_API_KEY repository secret to run live evals."
+            exit 1
+          fi
+      - name: Run live evals
+        run: |
+          [ -n "$FLEETALERT_MODEL" ] || unset FLEETALERT_MODEL
+          uv run python -m evals.run live \
+            --trials "${{ inputs.trials || '3' }}" \
+            --summary "$GITHUB_STEP_SUMMARY" \
+            --json eval-results.json \
+            ${{ inputs.record && '--record' || '' }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-results
+          path: backend/eval-results.json
+          if-no-files-found: ignore
+      - name: Commit cassettes, baseline and results
+        if: always() && inputs.record && github.ref_name != 'main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A evals/
+          if git diff --cached --quiet; then
+            echo "Nothing recorded."
+          else
+            git commit -m "Record live eval results (${{ inputs.model || 'default model' }})"
+            git push
+          fi

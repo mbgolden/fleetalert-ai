@@ -570,5 +570,8 @@ def _build_system_prompt(machine: dict[str, Any]) -> str:
         "picking one -- note the conflict and prefer the more cautious "
         "option. Call propose_fix exactly once, when ready to finalize a "
         "recommendation. You cannot execute any fix yourself; a human must "
-        "confirm it first."
+        "confirm it first.\n\n"
+        "Set confidence to reflect the evidence. If no knowledge base entry "
+        "matches the symptom, you are reasoning without a documented fix: say "
+        "so in the description and keep confidence at 0.6 or below."
     )

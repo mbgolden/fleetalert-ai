@@ -16,8 +16,9 @@ allowed.
 in time order. The signal names depend on the machine type:
 - Diesel engines report `coolant_temp_c`, `coolant_level_pct`,
   `oil_pressure_psi` and `rpm`.
-- Refrigeration units report `cabin_temp_c`, `setpoint_c`,
-  `compressor_current_a` and `compressor_state`.
+- Refrigeration units report `cabin_temp_c` (an independent cabin probe),
+  `controller_reading_c` (the unit controller's own return-air sensor),
+  `setpoint_c`, `compressor_current_a` and `compressor_state`.
 
 **Guarantees**
 - **Scoped to the alert's machine.** The machine comes from the

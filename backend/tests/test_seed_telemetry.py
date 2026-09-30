@@ -67,3 +67,17 @@ def test_compressor_fault_shows_the_fault_state(dynamodb_tables: None) -> None:
     reseed_demo_data()
     states = {r["signal_readings"]["compressor_state"] for r in _snapshot("ALERT-1005")}
     assert "fault" in states
+
+
+def test_cabin_drift_is_a_controller_calibration_story(dynamodb_tables: None) -> None:
+    """KB-003 (diagnostic reset) only applies when the controller still reads
+    setpoint while the cabin probe runs warm; with both agreeing, the first
+    live eval run showed the model (reasonably) calling a service visit."""
+    reseed_demo_data()
+    after = [r["signal_readings"] for r in _snapshot("ALERT-1002", 180)][-6:]
+    for reading in after:
+        assert abs(float(reading["controller_reading_c"]) - 2.0) <= 0.5
+        assert float(reading["cabin_temp_c"]) >= 5.0
+
+    fault = [r["signal_readings"] for r in _snapshot("ALERT-1005", 180)]
+    assert all(r["controller_reading_c"] == r["cabin_temp_c"] for r in fault)

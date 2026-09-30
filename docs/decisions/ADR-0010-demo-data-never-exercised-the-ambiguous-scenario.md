@@ -45,8 +45,9 @@ against empty data. It would have looked green while testing nothing.
     leak, so KB-002).
   - ALERT-1004: one reading spikes and immediately returns, with level flat (a
     sensor glitch, so KB-001).
-  - ALERT-1002: cabin temperature drifts off setpoint while the compressor
-    runs normally (KB-003).
+  - ALERT-1002: the cabin probe drifts off setpoint while the controller's own
+    reading stays at setpoint (controller calibration drift, KB-003). Revised
+    after the first live eval run; see ADR-0012.
   - ALERT-1003: oil pressure declines steadily at constant rpm (KB-004).
   - ALERT-1005: the compressor current spikes, then faults out (no KB entry,
     so route to support).
