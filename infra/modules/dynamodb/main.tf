@@ -94,3 +94,23 @@ resource "aws_dynamodb_table" "traces" {
 
   tags = var.tags
 }
+
+# Daily usage counters for the demo's cost guard (docs/decisions/ADR-0017):
+# one row per UTC day, incremented atomically. Rows expire after 90 days.
+resource "aws_dynamodb_table" "usage" {
+  name         = "${var.project_name}-${var.environment}-usage"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "day"
+
+  attribute {
+    name = "day"
+    type = "S"
+  }
+
+  ttl {
+    attribute_name = "expires_at"
+    enabled        = true
+  }
+
+  tags = var.tags
+}

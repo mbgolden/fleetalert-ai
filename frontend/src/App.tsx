@@ -6,6 +6,7 @@ import { resetDemoData, simulateInboundEmail } from "./api";
 export default function App() {
   const [resetting, setResetting] = useState(false);
   const [emailing, setEmailing] = useState(false);
+  const [headerNotice, setHeaderNotice] = useState<string | null>(null);
   const navigate = useNavigate();
 
   // Runs the same code as the 4-hourly scheduled email, then opens the
@@ -13,8 +14,13 @@ export default function App() {
   // that one instead and says why.
   const handleEmail = async () => {
     setEmailing(true);
+    setHeaderNotice(null);
     try {
       const delivery = await simulateInboundEmail();
+      if (delivery.budget_exhausted) {
+        setHeaderNotice(delivery.reason ?? "Today's demo budget is used up.");
+        return;
+      }
       navigate(`/alerts/${delivery.alert_id}`, {
         state: { notice: delivery.started ? "Inbound email received." : delivery.reason },
       });
@@ -58,6 +64,7 @@ export default function App() {
           </button>
         </div>
       </header>
+      {headerNotice && <p className="header-notice">{headerNotice}</p>}
       <main className="app-main">
         <Outlet />
       </main>

@@ -14,6 +14,12 @@ should look at a faulted compressor (the action), and unsure of the root
 cause (the diagnosis). One number can't hold both, so the check is
 measuring the wrong thing.
 
+Update, 2026-09-30 19:26 recorded run: after the KB-conflict prompt change
+(ADR-0016), `compressor-no-kb` came in at 0.55-0.60 in all three trials,
+and the warning cleared. The symptom is gone for now, but the conceptual
+problem remains: the proposal UI still shows one "confidence" for two
+different questions. Lower priority, still worth doing.
+
 - Replace `confidence` on `propose_fix` with `diagnosis_confidence` (how
   sure the root cause is right) and `action_confidence` (how sure this fix
   is the right next step).

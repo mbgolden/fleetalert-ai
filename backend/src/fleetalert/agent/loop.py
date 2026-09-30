@@ -37,7 +37,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
-from fleetalert import config, pricing, repositories
+from fleetalert import budget, config, pricing, repositories
 from fleetalert.agent.guardrails import (
     MAX_LOOP_ITERATIONS,
     MAX_REJECTION_ROUNDS,
@@ -144,6 +144,23 @@ def run_investigation(
             "previous_trace_id": previous_trace_id,
         },
     )
+
+    if not budget.reserve_round():
+        # Daily cap reached (ADR-0017): end safely before any model call.
+        # The entry points pre-check this too; this is the one that holds
+        # for every path, including Step Functions retries.
+        log.warning("daily budget exhausted -- routing to support without calling the model")
+        tracer.record(
+            name="guardrail.daily_budget",
+            kind=SpanKind.DECISION,
+            actor="system",
+            status=SpanStatus.FAILURE,
+            parent_span_id=tracer.root_span_id,
+            output={"error": "daily demo budget exhausted", **budget.usage()},
+        )
+        refused = _route_to_support(tracer, alert_id, reason="daily_budget_exhausted")
+        _record_round(tracer, alert, model, pricing.empty_usage(), 0, refused, previous_trace_id, round_watch)
+        return refused
 
     system_prompt = _build_system_prompt(machine)
     user_message = (
@@ -298,6 +315,7 @@ def _record_round(
 ) -> None:
     """The round's root span, written once it ends. Cost is an estimate."""
     cost = pricing.estimate_cost_usd(model, usage)
+    budget.record_cost(cost)
     alert_logger(__name__, tracer.alert_id).info(
         "investigation round done: trace=%s outcome=%s calls=%d input=%d output=%d est_cost_usd=%s",
         tracer.trace_id,

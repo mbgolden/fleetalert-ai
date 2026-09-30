@@ -19,7 +19,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
-from fleetalert import repositories
+from fleetalert import metrics, repositories
 
 # Never persisted into spans: the trace API is public, and these grant (or
 # resume) actions.
@@ -103,24 +103,24 @@ class Tracer:
         attributes: dict[str, Any] | None = None,
     ) -> str:
         span_id = span_id or new_span_id()
-        repositories.put_span(
-            {
-                "trace_id": self.trace_id,
-                "span_id": span_id,
-                "parent_span_id": parent_span_id,
-                "alert_id": self.alert_id,
-                "name": name,
-                "kind": str(kind),
-                "actor": actor,
-                "entry_point": str(self.entry_point),
-                "status": str(status),
-                "input": redact(input or {}),
-                "output": redact(output or {}),
-                "latency_ms": round(latency_ms, 1) if latency_ms is not None else None,
-                "attributes": attributes or {},
-                "timestamp": datetime.now(UTC).isoformat(),
-            }
-        )
+        span: dict[str, Any] = {
+            "trace_id": self.trace_id,
+            "span_id": span_id,
+            "parent_span_id": parent_span_id,
+            "alert_id": self.alert_id,
+            "name": name,
+            "kind": str(kind),
+            "actor": actor,
+            "entry_point": str(self.entry_point),
+            "status": str(status),
+            "input": redact(input or {}),
+            "output": redact(output or {}),
+            "latency_ms": round(latency_ms, 1) if latency_ms is not None else None,
+            "attributes": attributes or {},
+            "timestamp": datetime.now(UTC).isoformat(),
+        }
+        repositories.put_span(span)
+        metrics.emit_for_span(span)
         return span_id
 
 

@@ -45,6 +45,23 @@ def state_machine_arn() -> str | None:
     return os.environ.get("STATE_MACHINE_ARN")
 
 
+def daily_investigation_cap() -> int:
+    """Investigation rounds per UTC day, across every entry point (ADR-0017)."""
+    return int(os.environ.get("FLEETALERT_DAILY_INVESTIGATION_CAP", "50"))
+
+
+def daily_cost_cap_usd() -> float:
+    """Estimated model spend per UTC day before new rounds are refused."""
+    return float(os.environ.get("FLEETALERT_DAILY_COST_CAP_USD", "1.25"))
+
+
+def metrics_enabled() -> bool:
+    """CloudWatch EMF metric lines: on inside Lambda, off in tests and evals
+    unless FLEETALERT_EMIT_METRICS says otherwise."""
+    default = "1" if os.environ.get("AWS_LAMBDA_FUNCTION_NAME") else "0"
+    return os.environ.get("FLEETALERT_EMIT_METRICS", default) == "1"
+
+
 def log_level() -> str:
     return os.environ.get("LOG_LEVEL", "INFO")
 

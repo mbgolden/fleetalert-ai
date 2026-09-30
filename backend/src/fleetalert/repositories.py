@@ -21,6 +21,7 @@ from fleetalert.db import (
     TELEMETRY_TABLE,
     TRACES_ALERT_INDEX,
     TRACES_TABLE,
+    USAGE_TABLE,
     get_dynamodb_resource,
 )
 
@@ -95,6 +96,13 @@ def create_tables() -> None:
                 "Projection": {"ProjectionType": "ALL"},
             }
         ],
+        BillingMode="PAY_PER_REQUEST",
+    )
+
+    ddb.create_table(
+        TableName=USAGE_TABLE,
+        KeySchema=[{"AttributeName": "day", "KeyType": "HASH"}],
+        AttributeDefinitions=[{"AttributeName": "day", "AttributeType": "S"}],
         BillingMode="PAY_PER_REQUEST",
     )
 
@@ -386,3 +394,45 @@ def _query_all(table: Any, **kwargs: Any) -> list[dict[str, Any]]:
         if "LastEvaluatedKey" not in resp:
             return items
         kwargs["ExclusiveStartKey"] = resp["LastEvaluatedKey"]
+
+
+# --- Daily usage (fleetalert.budget) ---
+
+
+def get_usage(day: str) -> dict[str, Any]:
+    resp = get_dynamodb_resource().Table(USAGE_TABLE).get_item(Key={"day": day})
+    item: dict[str, Any] = resp.get("Item") or {"day": day}
+    return item
+
+
+def reserve_usage(day: str, *, max_rounds: int, max_cost_usd: float, expires_at: int) -> bool:
+    """Atomically counts one more round for `day`, unless either cap is
+    already reached. False means refused; nothing was counted."""
+    try:
+        get_dynamodb_resource().Table(USAGE_TABLE).update_item(
+            Key={"day": day},
+            UpdateExpression="ADD investigations :one SET expires_at = :exp",
+            ConditionExpression=(
+                "(attribute_not_exists(investigations) OR investigations < :max_rounds) "
+                "AND (attribute_not_exists(cost_usd) OR cost_usd < :max_cost)"
+            ),
+            ExpressionAttributeValues={
+                ":one": 1,
+                ":exp": expires_at,
+                ":max_rounds": max_rounds,
+                ":max_cost": _dynamo_safe(max_cost_usd),
+            },
+        )
+    except ClientError as exc:
+        if exc.response["Error"]["Code"] == "ConditionalCheckFailedException":
+            return False
+        raise
+    return True
+
+
+def add_usage_cost(day: str, cost_usd: float, *, expires_at: int) -> None:
+    get_dynamodb_resource().Table(USAGE_TABLE).update_item(
+        Key={"day": day},
+        UpdateExpression="ADD cost_usd :cost SET expires_at = :exp",
+        ExpressionAttributeValues={":cost": _dynamo_safe(round(cost_usd, 6)), ":exp": expires_at},
+    )

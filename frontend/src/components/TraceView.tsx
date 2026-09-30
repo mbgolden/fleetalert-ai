@@ -14,6 +14,7 @@ const NAME_LABELS: Record<string, string> = {
   "guardrail.whitelist": "Whitelist check",
   "guardrail.not_previously_rejected": "Already-rejected check",
   "guardrail.truncated_output": "Cut-off tool call skipped",
+  "guardrail.daily_budget": "Daily budget check",
   request_confirmation: "Requested human confirmation",
   awaiting_human_confirmation: "Paused for human confirmation",
   confirm: "Confirmed",
