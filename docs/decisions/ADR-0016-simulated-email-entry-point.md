@@ -66,3 +66,21 @@ unanswered execution would wait for up to a year.
   the round still ends awaiting confirmation.
 - Proposals on web alerts now also expire after 2 hours. On a public demo,
   that's the desired behaviour.
+
+## First live email (2026-09-30 18:24)
+The email path worked end to end: the round was labelled EMAIL, the
+request to skip approval had no effect, the proposal waited, and a human
+confirmed it. But Claude proposed `schedule_service_visit` at 0.55
+confidence, not `restart_sensor`. Its own rationale said the telemetry
+"more closely matches KB-001". It still chose the visit, because the
+system prompt said to "prefer the more cautious option" whenever KB
+entries disagree, and the email's safety framing added weight to that.
+
+The instruction was wrong, not the model. The KB conflict exists to be
+resolved by evidence, which is the whole point of the seeded telemetry
+(ADR-0010). The prompt now says to name the conflict, use the telemetry to
+decide which entry's conditions hold, and prefer caution only when the
+evidence can't tell them apart. The sensor-glitch eval had passed 3/3 under
+the old wording, so this bias only showed with the extra push from the
+email. The next recorded eval run measures the change across every
+scenario, and records the first `email-glitch` cassette.
