@@ -30,13 +30,39 @@ export interface AlertStatusResponse {
   confirmation_token: string | null;
 }
 
-export interface AuditLogEntry {
+export type SpanKind =
+  | "investigation"
+  | "model_call"
+  | "capability"
+  | "decision"
+  | "human_action"
+  | "lifecycle";
+export type SpanStatus = "success" | "failure" | "retry" | "denied";
+
+// One structured trace span (backend: fleetalert.tracing). Numbers stored in
+// DynamoDB arrive as strings (the API serializes Decimal with str), so read
+// numeric fields through num().
+export interface Span {
+  trace_id: string;
+  span_id: string;
+  parent_span_id: string | null;
   alert_id: string;
-  timestamp: string;
-  log_id: string;
+  name: string;
+  kind: SpanKind;
   actor: "agent" | "human" | "system";
-  action: string;
-  details: Record<string, unknown>;
+  entry_point: string;
+  status: SpanStatus;
+  input: Record<string, unknown>;
+  output: Record<string, unknown>;
+  latency_ms: number | string | null;
+  attributes: Record<string, unknown>;
+  timestamp: string;
+}
+
+export function num(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
 }
 
 export class ApiError extends Error {
@@ -89,8 +115,8 @@ export function rejectFix(alertId: string, reason?: string): Promise<{ alert_id:
   });
 }
 
-export function getAuditTrail(alertId: string): Promise<{ audit_trail: AuditLogEntry[] }> {
-  return request(`/demo/alerts/${alertId}/audit`);
+export function getTrace(alertId: string): Promise<{ alert_id: string; spans: Span[] }> {
+  return request(`/demo/alerts/${alertId}/trace`);
 }
 
 export function resetDemoData(): Promise<{ outcome: string }> {

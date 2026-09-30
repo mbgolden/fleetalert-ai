@@ -52,8 +52,6 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
             alert_id = path_params["alert_id"]
             return _json(200, {"alert_id": alert_id, "spans": repositories.get_spans_for_alert(alert_id)})
 
-        if route_key == "GET /demo/alerts/{alert_id}/audit":
-            return _json(200, {"audit_trail": _audit_view(path_params["alert_id"])})
 
         if route_key == "POST /demo/reset":
             return _reset_demo_data()
@@ -87,34 +85,6 @@ def _start_investigation(alert_id: str) -> dict[str, Any]:
     )
     log.info("investigation triggered via API")
     return _json(202, {"alert_id": alert_id, "status": "investigation_started"})
-
-
-def _audit_view(alert_id: str) -> list[dict[str, Any]]:
-    """The pre-Traces flat audit shape, derived from spans.
-
-    Keeps the existing frontend's trace panel working until it moves to
-    /trace; remove with the old viewer.
-    """
-    entries = []
-    for span in repositories.get_spans_for_alert(alert_id):
-        if span.get("kind") == "model_call":
-            continue
-        details: dict[str, Any] = dict(span.get("input") or {})
-        if span.get("kind") == "investigation":
-            details = {**(span.get("output") or {}), **(span.get("attributes") or {})}
-        elif span.get("status") not in (None, "success"):
-            details = {**details, "status": span.get("status"), **(span.get("output") or {})}
-        entries.append(
-            {
-                "alert_id": alert_id,
-                "timestamp": span["timestamp"],
-                "log_id": span["span_id"],
-                "actor": span.get("actor"),
-                "action": span.get("name"),
-                "details": details,
-            }
-        )
-    return entries
 
 
 def _get_status(alert_id: str) -> dict[str, Any]:

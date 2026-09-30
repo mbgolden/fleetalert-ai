@@ -4,13 +4,14 @@ import { Link, useParams } from "react-router-dom";
 import {
   type AlertStatus,
   type AlertStatusResponse,
-  type AuditLogEntry,
+  type Span,
   confirmFix,
   getAlertStatus,
-  getAuditTrail,
+  getTrace,
   rejectFix,
   startInvestigation,
 } from "../api";
+import TraceView from "./TraceView";
 
 const TERMINAL_STATUSES = new Set<AlertStatus>([
   "resolved",
@@ -21,10 +22,12 @@ const TERMINAL_STATUSES = new Set<AlertStatus>([
 const POLL_INTERVAL_MS = 2000;
 const STALLED_AFTER_S = 45;
 
-// Plain-English version of the latest audit entry, shown while work is in
-// flight so the visitor can see what is happening right now.
+// Plain-English version of the latest span, shown while work is in flight so
+// the visitor can see what is happening right now.
 const ACTIVITY_LABELS: Record<string, string> = {
   investigation_started: "Starting the investigation",
+  model_call: "Claude is deciding what to check next",
+  "guardrail.whitelist": "Checking the action whitelist",
   get_telemetry_snapshot: "Reading machine telemetry",
   search_knowledge_base: "Searching the knowledge base",
   get_service_history: "Reviewing service history",
@@ -37,7 +40,7 @@ const ACTIVITY_LABELS: Record<string, string> = {
 export default function AlertDetail() {
   const { alertId } = useParams<{ alertId: string }>();
   const [status, setStatus] = useState<AlertStatusResponse | null>(null);
-  const [trail, setTrail] = useState<AuditLogEntry[]>([]);
+  const [spans, setSpans] = useState<Span[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [actionPending, setActionPending] = useState(false);
   // True from clicking Investigate until the backend reports it's running.
@@ -64,12 +67,12 @@ export default function AlertDetail() {
   const refresh = useCallback(async () => {
     if (!alertId) return;
     try {
-      const [statusResp, auditResp] = await Promise.all([
+      const [statusResp, traceResp] = await Promise.all([
         getAlertStatus(alertId),
-        getAuditTrail(alertId),
+        getTrace(alertId),
       ]);
       setStatus(statusResp);
-      setTrail(auditResp.audit_trail);
+      setSpans(traceResp.spans);
       if (statusResp.status !== "open") setStarting(false);
       if (statusResp.status !== "awaiting_confirmation") setExecuting(false);
       if (TERMINAL_STATUSES.has(statusResp.status)) {
@@ -103,12 +106,12 @@ export default function AlertDetail() {
 
   // Follows new trace entries and the eventual proposed-fix/outcome box
   // down as they appear, rather than making the visitor scroll to find
-  // them -- keyed on trail.length (not the trail array itself, which is a
-  // fresh reference every poll tick) so this only fires on real new
-  // activity, not every 2s refresh.
+  // them -- keyed on spans.length (not the array itself, which is a fresh
+  // reference every poll tick) so this only fires on real new activity,
+  // not every 2s refresh.
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [trail.length, status?.status, working]);
+  }, [spans.length, status?.status, working]);
 
   if (!alertId) return null;
 
@@ -151,14 +154,18 @@ export default function AlertDetail() {
       startPolling();
     });
 
-  const lastEntry = trail.length > 0 ? trail[trail.length - 1] : null;
+  // Latest by write time -- a round's root span is written last but sorts first.
+  const lastEntry = spans.reduce<Span | null>(
+    (latest, span) => (latest === null || span.timestamp > latest.timestamp ? span : latest),
+    null,
+  );
   const lastEntryAt = lastEntry ? new Date(lastEntry.timestamp).getTime() : null;
   const sinceLastUpdate = lastEntryAt ? Math.max(0, Math.round((now - lastEntryAt) / 1000)) : 0;
   const stalled = working && lastEntryAt !== null && sinceLastUpdate > STALLED_AFTER_S;
   const activityLabel = executing
     ? ACTIVITY_LABELS.confirm
     : lastEntry
-      ? (ACTIVITY_LABELS[lastEntry.action] ?? "Working")
+      ? (ACTIVITY_LABELS[lastEntry.name] ?? "Working")
       : ACTIVITY_LABELS.investigation_started;
 
   const isTerminal = status !== null && TERMINAL_STATUSES.has(status.status);
@@ -177,18 +184,9 @@ export default function AlertDetail() {
       )}
 
       <h2>Investigation trace</h2>
+      <TraceView spans={spans} working={working} />
       <ol className="timeline">
-        {trail.map((entry) => (
-          <li key={entry.log_id} className={`timeline-entry actor-${entry.actor}`}>
-            <span className="timeline-time">{new Date(entry.timestamp).toLocaleTimeString()}</span>
-            <span className="timeline-actor">{entry.actor}</span>
-            <span className="timeline-action">{entry.action.replaceAll("_", " ")}</span>
-            {Object.keys(entry.details).length > 0 && (
-              <pre className="timeline-details">{JSON.stringify(entry.details, null, 2)}</pre>
-            )}
-          </li>
-        ))}
-        {trail.length === 0 && !working && <li className="timeline-empty">No activity yet.</li>}
+        {spans.length === 0 && !working && <li className="timeline-empty">No activity yet.</li>}
         {working && (
           <li className="timeline-working" role="status" aria-live="polite">
             <span className="spinner" aria-hidden="true" />

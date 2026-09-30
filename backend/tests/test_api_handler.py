@@ -8,7 +8,6 @@ from fleetalert.repositories import (
     create_alert,
     get_alert,
     put_machine,
-    update_alert,
 )
 from fleetalert.seed_data import SEED_MACHINES
 from tests.trace_helpers import last_event
@@ -247,19 +246,6 @@ def test_reject_route_sends_routed_to_support_once_budget_exhausted(
 
     assert len(fake_sfn.task_failures) == 1
     assert fake_sfn.task_failures[0]["error"] == "RoutedToSupport"
-
-
-def test_audit_route(dynamodb_tables: None) -> None:
-    _seed_alert("ALERT-8")
-    update_alert("ALERT-8", status="investigating")
-
-    resp = api_handler.handler(
-        {"routeKey": "GET /demo/alerts/{alert_id}/audit", "pathParameters": {"alert_id": "ALERT-8"}},
-        None,
-    )
-
-    assert resp["statusCode"] == 200
-    assert json.loads(resp["body"]) == {"audit_trail": []}
 
 
 def test_reset_route_restores_default_state_and_clears_trail(dynamodb_tables: None) -> None:

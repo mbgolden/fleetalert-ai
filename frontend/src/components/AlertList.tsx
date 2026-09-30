@@ -32,7 +32,7 @@ export default function AlertList() {
         <ul className="overview-points">
           <li>Only 3 whitelisted actions can ever run, checked twice</li>
           <li>A rejected fix triggers one more RAG-backed retry before escalating to a human</li>
-          <li>Every step runs through Step Functions and is written to an audit log</li>
+          <li>Every model call, capability call and guardrail decision is traced as a structured span</li>
         </ul>
         <a
           href="https://10finger.dev/project/fleetalert-ai"
