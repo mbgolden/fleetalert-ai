@@ -66,7 +66,7 @@ def test_execute_fix_handler_delegates_to_agent_loop(dynamodb_tables: None) -> N
     assert get_alert("ALERT-2")["status"] == "resolved"  # type: ignore[index]
 
 
-def test_execute_fix_handler_marks_alert_failed_on_exception(dynamodb_tables: None) -> None:
+def test_execute_fix_handler_records_a_guardrail_refusal_as_refused(dynamodb_tables: None) -> None:
     _seed_alert(
         "ALERT-2B",
         status="awaiting_confirmation",
@@ -86,7 +86,37 @@ def test_execute_fix_handler_marks_alert_failed_on_exception(dynamodb_tables: No
 
     last_action = last_event("ALERT-2B")
     assert last_action["actor"] == "system"
+    assert last_action["action"] == "execution_refused"
+    assert last_action["status"] == "denied"
+
+
+def test_guardrail_violation_keeps_the_name_the_state_machine_matches() -> None:
+    """infra/modules/step_functions skips retries for the Lambda error type
+    "GuardrailViolation", which is this class's name. Renaming the class
+    would silently bring back six pointless retries."""
+    assert GuardrailViolation.__name__ == "GuardrailViolation"
+
+
+def test_execute_fix_handler_marks_alert_failed_on_other_errors(
+    dynamodb_tables: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from fleetalert.handlers import execute_fix_handler as module
+
+    _seed_alert("ALERT-2C", status="awaiting_confirmation", proposed_fix="send_diagnostic_reset")
+
+    def boom(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("DynamoDB unavailable")
+
+    monkeypatch.setattr(module, "execute_fix", boom)
+
+    with pytest.raises(RuntimeError):
+        execute_fix_handler(
+            {"alert_id": "ALERT-2C", "fix_id": "send_diagnostic_reset", "confirmation_token": "t"}, None
+        )
+
+    last_action = last_event("ALERT-2C")
     assert last_action["action"] == "execution_failed"
+    assert last_action["status"] == "failure"
 
 
 def test_agent_loop_handler_fetches_secret_and_runs_investigation(

@@ -30,8 +30,3 @@ different questions. Lower priority, still worth doing.
   tests and the evals, and re-record the cassettes.
 - Consider doing this with the Sonnet 5.5 comparison run, so both models
   are measured on the new contract.
-
-## Don't retry `GuardrailViolation` in Step Functions
-From `docs/capabilities/execute_fix.md`. The task Retry matches
-`States.ALL`, so a deterministic refusal is retried six times before
-failing. It should be a named error excluded from Retry.

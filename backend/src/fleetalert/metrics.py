@@ -86,6 +86,8 @@ def records_for_span(span: dict[str, Any]) -> list[str]:
         lines.append(_emf({"Action": name}, [["Action"]], {"HumanActions": (1, "Count")}))
     elif kind == "lifecycle" and name == "execution_failed":
         lines.append(_emf({}, [[]], {"ExecutionFailures": (1, "Count")}))
+    elif kind == "lifecycle" and name == "execution_refused":
+        lines.append(_emf({}, [[]], {"ExecutionRefusals": (1, "Count")}))
     return lines
 
 

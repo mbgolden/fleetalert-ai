@@ -34,8 +34,7 @@ with `error_type` set so callers can tell a refusal from an infrastructure
 error.
 
 **Known failure modes**
-- **Guardrail violations are not transient.** Step Functions' own task
-  retry will retry them anyway, and they will fail the same way each time,
-  then land in the terminal Failed state. That's safe but wasteful. A future
-  change could mark `GuardrailViolation` as non-retryable in the state
-  machine.
+- **Guardrail violations are not transient.** The state machine doesn't
+  retry them: a `GuardrailViolation` goes straight to the `Refused` state on
+  its first attempt, and is recorded as `execution_refused` (ADR-0018).
+  Other errors still get six retries with backoff.

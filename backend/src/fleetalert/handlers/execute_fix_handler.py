@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 from fleetalert import repositories
+from fleetalert.agent.guardrails import GuardrailViolation
 from fleetalert.agent.loop import execute_fix
 from fleetalert.logging_config import alert_logger, configure_logging
 from fleetalert.tracing import SpanKind, SpanStatus, Tracer
@@ -25,6 +26,13 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         result = execute_fix(alert_id, event["fix_id"], event["confirmation_token"])
         log.info("ExecuteFix task complete: %s", result.get("outcome"))
         return result
+    except GuardrailViolation:
+        # A refusal, not a fault: the state machine doesn't retry it (it
+        # matches this class name exactly; ADR-0018), so this attempt is
+        # the last one. Recorded as a refusal so it isn't read as an outage.
+        log.warning("ExecuteFix refused by a guardrail")
+        _mark_failed(alert_id, refused=True)
+        raise
     except Exception:
         # See agent_loop_handler._mark_failed -- same best-effort pattern,
         # for the same Retry/Catch structure on this task in the state
@@ -34,17 +42,17 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         raise
 
 
-def _mark_failed(alert_id: str) -> None:
+def _mark_failed(alert_id: str, *, refused: bool = False) -> None:
     try:
         repositories.update_alert(alert_id, status="failed")
         alert = repositories.get_alert(alert_id)
         if alert is not None:
             tracer = Tracer.continue_for(alert)
             tracer.record(
-                name="execution_failed",
+                name="execution_refused" if refused else "execution_failed",
                 kind=SpanKind.LIFECYCLE,
                 actor="system",
-                status=SpanStatus.FAILURE,
+                status=SpanStatus.DENIED if refused else SpanStatus.FAILURE,
                 parent_span_id=tracer.root_span_id,
             )
     except Exception:  # noqa: BLE001, S110 -- best-effort; must never mask the real error  # nosec B110

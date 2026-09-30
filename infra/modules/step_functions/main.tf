@@ -82,7 +82,15 @@ resource "aws_sfn_state_machine" "this" {
         }
         ResultPath = "$.investigation"
         Next       = "IsAwaitingConfirmation"
+        # A GuardrailViolation is a deterministic refusal (a bad token, a
+        # fix that doesn't match the proposal), not a transient fault:
+        # retrying it only fails the same way six more times. The first
+        # matching retrier wins, so it's listed first with no attempts.
         Retry = [
+          {
+            ErrorEquals = ["GuardrailViolation"]
+            MaxAttempts = 0
+          },
           {
             ErrorEquals     = ["States.ALL"]
             IntervalSeconds = 2
@@ -91,6 +99,10 @@ resource "aws_sfn_state_machine" "this" {
           }
         ]
         Catch = [
+          {
+            ErrorEquals = ["GuardrailViolation"]
+            Next        = "Refused"
+          },
           {
             ErrorEquals = ["States.ALL"]
             Next        = "Failed"
@@ -177,7 +189,15 @@ resource "aws_sfn_state_machine" "this" {
           }
         }
         Next = "Complete"
+        # A GuardrailViolation is a deterministic refusal (a bad token, a
+        # fix that doesn't match the proposal), not a transient fault:
+        # retrying it only fails the same way six more times. The first
+        # matching retrier wins, so it's listed first with no attempts.
         Retry = [
+          {
+            ErrorEquals = ["GuardrailViolation"]
+            MaxAttempts = 0
+          },
           {
             ErrorEquals     = ["States.ALL"]
             IntervalSeconds = 2
@@ -186,6 +206,10 @@ resource "aws_sfn_state_machine" "this" {
           }
         ]
         Catch = [
+          {
+            ErrorEquals = ["GuardrailViolation"]
+            Next        = "Refused"
+          },
           {
             ErrorEquals = ["States.ALL"]
             Next        = "Failed"
@@ -240,6 +264,15 @@ resource "aws_sfn_state_machine" "this" {
       # (best-effort) before re-raising, on the *last* attempt only, since
       # each earlier retry re-enters "investigating"/"awaiting_confirmation"
       # first and overwrites it.
+      # A guardrail refused the task. Terminal on the first attempt, and
+      # named separately from Failed so the console and metrics can tell a
+      # refusal from an infrastructure fault (ADR-0018).
+      Refused = {
+        Type  = "Fail"
+        Error = "GuardrailViolation"
+        Cause = "A guardrail refused the task; refusals are deterministic, so it was not retried."
+      }
+
       Failed = {
         Type  = "Fail"
         Error = "InvestigationFailed"
