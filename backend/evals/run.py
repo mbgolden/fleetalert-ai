@@ -22,7 +22,7 @@ from evals.suite import TrialResult, run_live, run_replay
 from fleetalert import config
 
 RESULTS_DIR = Path(__file__).parent / "results"
-MAX_TRIALS = 5  # cost guard: 6 scenarios x 5 trials is still ~$1.50
+MAX_TRIALS = 5  # cost guard: 7 scenarios x 5 trials is still ~$1.50
 
 
 def _progress(scenario: object, n: int, result: TrialResult) -> None:

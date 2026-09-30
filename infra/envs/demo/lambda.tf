@@ -70,6 +70,19 @@ module "lambda_wait_for_confirmation" {
   tags              = local.common_tags
 }
 
+module "lambda_confirmation_timeout" {
+  source        = "../../modules/lambda_function"
+  function_name = "${var.project_name}-demo-confirmation-timeout"
+  description   = "Routes an alert to support when nobody confirms or rejects within the wait timeout."
+  handler       = "fleetalert.handlers.confirmation_timeout_handler.handler"
+  timeout       = 30
+  source_dir    = local.lambda_source_dir
+
+  environment       = local.common_environment
+  policy_statements = [local.dynamodb_read_write_statement]
+  tags              = local.common_tags
+}
+
 module "lambda_execute_fix" {
   source        = "../../modules/lambda_function"
   function_name = "${var.project_name}-demo-execute-fix"

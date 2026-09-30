@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 
 import {
   type AlertStatus,
@@ -11,6 +11,7 @@ import {
   rejectFix,
   startInvestigation,
 } from "../api";
+import InboundEmailCard from "./InboundEmailCard";
 import TraceView from "./TraceView";
 
 const TERMINAL_STATUSES = new Set<AlertStatus>([
@@ -25,6 +26,7 @@ const STALLED_AFTER_S = 45;
 // Plain-English version of the latest span, shown while work is in flight so
 // the visitor can see what is happening right now.
 const ACTIVITY_LABELS: Record<string, string> = {
+  queued: "Email received, starting the investigation",
   investigation_started: "Starting the investigation",
   model_call: "Claude is deciding what to check next",
   "guardrail.whitelist": "Checking the action whitelist",
@@ -39,6 +41,7 @@ const ACTIVITY_LABELS: Record<string, string> = {
 
 export default function AlertDetail() {
   const { alertId } = useParams<{ alertId: string }>();
+  const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const [status, setStatus] = useState<AlertStatusResponse | null>(null);
   const [spans, setSpans] = useState<Span[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +80,10 @@ export default function AlertDetail() {
       if (statusResp.status !== "awaiting_confirmation") setExecuting(false);
       if (TERMINAL_STATUSES.has(statusResp.status)) {
         stopPolling();
-      } else if (statusResp.status === "investigating" && pollRef.current === null) {
+      } else if (
+        (statusResp.status === "investigating" || statusResp.status === "queued") &&
+        pollRef.current === null
+      ) {
         // e.g. the page was opened or reloaded mid-investigation
         startPolling();
       }
@@ -95,7 +101,8 @@ export default function AlertDetail() {
     return stopPolling;
   }, [refresh, stopPolling]);
 
-  const working = status?.status === "investigating" || starting || executing;
+  const working =
+    status?.status === "investigating" || status?.status === "queued" || starting || executing;
 
   // Ticks once a second, only while there is something to time.
   useEffect(() => {
@@ -164,16 +171,22 @@ export default function AlertDetail() {
   const stalled = working && lastEntryAt !== null && sinceLastUpdate > STALLED_AFTER_S;
   const activityLabel = executing
     ? ACTIVITY_LABELS.confirm
-    : lastEntry
-      ? (ACTIVITY_LABELS[lastEntry.name] ?? "Working")
-      : ACTIVITY_LABELS.investigation_started;
+    : status?.status === "queued"
+      ? ACTIVITY_LABELS.queued
+      : lastEntry
+        ? (ACTIVITY_LABELS[lastEntry.name] ?? "Working")
+        : ACTIVITY_LABELS.investigation_started;
 
   const isTerminal = status !== null && TERMINAL_STATUSES.has(status.status);
   const pillLabel = starting || executing ? "working" : (status?.status.replaceAll("_", " ") ?? "");
 
   return (
     <div className="alert-detail">
-      <h1>{alertId}</h1>
+      <h1>
+        {alertId}
+        {status?.source === "email" && <span className="entry-chip entry-email title-chip">via email</span>}
+      </h1>
+      {notice && <p className="notice">{notice}</p>}
       {error && <p className="error">{error}</p>}
 
       {status && (
@@ -182,6 +195,8 @@ export default function AlertDetail() {
           {pillLabel}
         </p>
       )}
+
+      {status?.inbound_email && <InboundEmailCard email={status.inbound_email} />}
 
       <h2>Investigation trace</h2>
       <TraceView spans={spans} working={working} />

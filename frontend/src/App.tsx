@@ -1,10 +1,27 @@
 import { useState } from "react";
-import { Link, Outlet } from "react-router-dom";
+import { Link, Outlet, useNavigate } from "react-router-dom";
 
-import { resetDemoData } from "./api";
+import { resetDemoData, simulateInboundEmail } from "./api";
 
 export default function App() {
   const [resetting, setResetting] = useState(false);
+  const [emailing, setEmailing] = useState(false);
+  const navigate = useNavigate();
+
+  // Runs the same code as the 4-hourly scheduled email, then opens the
+  // alert it raised. If the last email is still being handled, it opens
+  // that one instead and says why.
+  const handleEmail = async () => {
+    setEmailing(true);
+    try {
+      const delivery = await simulateInboundEmail();
+      navigate(`/alerts/${delivery.alert_id}`, {
+        state: { notice: delivery.started ? "Inbound email received." : delivery.reason },
+      });
+    } finally {
+      setEmailing(false);
+    }
+  };
 
   const handleReset = async () => {
     setResetting(true);
@@ -32,9 +49,14 @@ export default function App() {
             Agentic investigation demo — fixed scenarios only, no free-text input.
           </p>
         </div>
-        <button className="reset-button" disabled={resetting} onClick={handleReset}>
-          {resetting ? "Resetting…" : "Reset Alerts"}
-        </button>
+        <div className="header-actions">
+          <button className="email-button" disabled={emailing} onClick={handleEmail}>
+            {emailing ? "Sending…" : "Simulate inbound email"}
+          </button>
+          <button className="reset-button" disabled={resetting} onClick={handleReset}>
+            {resetting ? "Resetting…" : "Reset Alerts"}
+          </button>
+        </div>
       </header>
       <main className="app-main">
         <Outlet />

@@ -356,6 +356,28 @@ def clear_spans_for_alert(alert_id: str) -> None:
             batch.delete_item(Key={"trace_id": span["trace_id"], "span_id": span["span_id"]})
 
 
+def prune_traces_for_alert(alert_id: str, *, keep: int) -> None:
+    """Keeps only the alert's `keep` most recent traces (rounds).
+
+    For the recurring email alert only (fleetalert.email_intake), so its
+    history stays bounded; like clear_spans_for_alert, a demo-only delete
+    (ADR-0015).
+    """
+    spans = get_spans_for_alert(alert_id)
+    first_span: dict[str, str] = {}
+    for span in spans:  # already in span_id (time) order
+        first_span.setdefault(span["trace_id"], span["span_id"])
+    newest_first = sorted(first_span, key=lambda trace_id: first_span[trace_id], reverse=True)
+    stale = set(newest_first[keep:])
+    if not stale:
+        return
+    table = get_dynamodb_resource().Table(TRACES_TABLE)
+    with table.batch_writer() as batch:
+        for span in spans:
+            if span["trace_id"] in stale:
+                batch.delete_item(Key={"trace_id": span["trace_id"], "span_id": span["span_id"]})
+
+
 def _query_all(table: Any, **kwargs: Any) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     while True:

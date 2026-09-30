@@ -105,7 +105,7 @@ function summarize(span: Span): string | null {
     case "confirm":
       return String(input.fix_id ?? output.fix_id ?? "");
     case "route_to_support":
-      return `${String(output.reason ?? "")}${output.fix_id ? ` (${String(output.fix_id)})` : ""}`;
+      return `${String(output.reason ?? "").replaceAll("_", " ")}${output.fix_id ? ` (${String(output.fix_id)})` : ""}`;
     case "reject":
       return input.reason ? String(input.reason) : null;
     default:
@@ -192,6 +192,10 @@ function RoundCard({ round, index, live }: { round: Round; index: number; live: 
     }
   }
 
+  // Rounds on one alert can come from different entry points (web, email),
+  // so only call a round "after rejection" when it actually followed one.
+  const started = round.spans.find((s) => s.name === "investigation_started");
+  const afterRejection = (num(started?.input?.rejected_fixes) ?? 0) > 0;
   const rootAttrs = round.root?.attributes ?? {};
   const outcome = round.root ? String(round.root.output?.outcome ?? "") : "";
   const cost =
@@ -212,7 +216,7 @@ function RoundCard({ round, index, live }: { round: Round; index: number; live: 
       <header className="round-header">
         <span className="round-title">Round {index + 1}</span>
         <span className={`entry-chip entry-${round.entryPoint}`}>{round.entryPoint}</span>
-        {index > 0 && <span className="round-note">after rejection</span>}
+        {afterRejection && <span className="round-note">after rejection</span>}
         <span className="round-outcome">
           {round.root ? (OUTCOME_LABELS[outcome] ?? outcome) : live ? "in progress…" : "incomplete"}
           {followUps.map((f) => ` → ${f}`).join("")}

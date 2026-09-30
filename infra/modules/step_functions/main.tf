@@ -47,6 +47,7 @@ resource "aws_iam_role_policy" "invoke_lambdas" {
           var.agent_loop_lambda_arn,
           var.wait_for_confirmation_lambda_arn,
           var.execute_fix_lambda_arn,
+          var.confirmation_timeout_lambda_arn,
         ]
       }
     ]
@@ -121,6 +122,10 @@ resource "aws_sfn_state_machine" "this" {
         }
         ResultPath = "$.confirmation"
         Next       = "ExecuteFix"
+        # Nobody answers some proposals (an email that arrives overnight, a
+        # visitor who leaves). Without a timeout the execution would wait up
+        # to a year; instead, after 2 hours the alert routes to support.
+        TimeoutSeconds = var.confirmation_timeout_seconds
         # A rejection isn't a WaitForConfirmation failure in the ordinary
         # sense -- api_handler._reject calls SendTaskFailure deliberately,
         # with the error name telling us which of reject_fix's two normal
@@ -149,6 +154,11 @@ resource "aws_sfn_state_machine" "this" {
             Next        = "RoutedToSupport"
           },
           {
+            ErrorEquals = ["States.Timeout"]
+            Next        = "ConfirmationTimedOut"
+            ResultPath  = "$.timeout"
+          },
+          {
             ErrorEquals = ["States.ALL"]
             Next        = "Rejected"
           }
@@ -172,6 +182,33 @@ resource "aws_sfn_state_machine" "this" {
             ErrorEquals     = ["States.ALL"]
             IntervalSeconds = 2
             MaxAttempts     = 6
+            BackoffRate     = 2.0
+          }
+        ]
+        Catch = [
+          {
+            ErrorEquals = ["States.ALL"]
+            Next        = "Failed"
+          }
+        ]
+      }
+
+      ConfirmationTimedOut = {
+        Type     = "Task"
+        Resource = "arn:aws:states:::lambda:invoke"
+        Parameters = {
+          FunctionName = var.confirmation_timeout_lambda_arn
+          Payload = {
+            "alert_id.$" = "$.alert_id"
+          }
+        }
+        ResultPath = null
+        Next       = "RoutedToSupport"
+        Retry = [
+          {
+            ErrorEquals     = ["States.ALL"]
+            IntervalSeconds = 2
+            MaxAttempts     = 3
             BackoffRate     = 2.0
           }
         ]

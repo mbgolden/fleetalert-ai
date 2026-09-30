@@ -579,3 +579,83 @@ button.reset-button:hover:not(:disabled) {
     width: 100%;
   }
 }
+
+/* --- Email entry point --- */
+
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.header-actions button {
+  margin-top: 0;
+}
+
+button.email-button {
+  background: transparent;
+  color: #c084fc;
+  border: 1px solid #c084fc;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+button.email-button:hover:not(:disabled) {
+  background: color-mix(in srgb, #c084fc 12%, transparent);
+  box-shadow: none;
+}
+
+.title-chip {
+  margin-left: 0.75rem;
+  vertical-align: middle;
+  font-size: 0.8rem;
+}
+
+.card-chip {
+  margin-left: 0.5rem;
+  font-size: 0.65rem;
+}
+
+.notice {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.inbound-email {
+  margin: 1rem 0 1.5rem;
+  padding: 1rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, #c084fc 45%, var(--border));
+  border-left: 3px solid #c084fc;
+  border-radius: 10px;
+}
+
+.inbound-email header p {
+  margin: 0;
+}
+
+.inbound-email .email-subject {
+  font-weight: 700;
+  margin-top: 0.1rem;
+}
+
+.email-meta {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.email-body {
+  margin: 0.85rem 0;
+  white-space: pre-wrap;
+  line-height: 1.5;
+  font-size: 0.92rem;
+}
+
+.email-note {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}

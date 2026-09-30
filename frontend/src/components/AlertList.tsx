@@ -33,6 +33,10 @@ export default function AlertList() {
           <li>Only 3 whitelisted actions can ever run, checked twice</li>
           <li>A rejected fix triggers one more RAG-backed retry before escalating to a human</li>
           <li>Every model call, capability call and guardrail decision is traced as a structured span</li>
+          <li>
+            Two entry points, one engine: the web UI, and an inbound email that arrives every 4
+            hours (or now, via <em>Simulate inbound email</em>)
+          </li>
         </ul>
         <a
           href="https://10finger.dev/project/fleetalert-ai"
@@ -55,7 +59,10 @@ export default function AlertList() {
               </span>
               <span className="alert-card-body">
                 <strong>{alert.machine_name ?? alert.machine_id}</strong>
-                <span className="alert-type">{alert.alert_type.replaceAll("_", " ")}</span>
+                <span className="alert-type">
+                  {alert.alert_type.replaceAll("_", " ")}
+                  {alert.source === "email" && <span className="entry-chip entry-email card-chip">via email</span>}
+                </span>
               </span>
               <span className={`status-pill status-${alert.status}`}>
                 {alert.status.replaceAll("_", " ")}
