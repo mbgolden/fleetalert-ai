@@ -24,7 +24,6 @@ locals {
     "GET /demo/alerts/{alert_id}/status",
     "POST /demo/alerts/{alert_id}/confirm",
     "POST /demo/alerts/{alert_id}/reject",
-    "GET /demo/alerts/{alert_id}/audit",
     "GET /demo/alerts/{alert_id}/trace",
     "POST /demo/reset",
   ]

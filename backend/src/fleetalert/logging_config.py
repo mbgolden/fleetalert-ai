@@ -3,9 +3,9 @@
 JSON output so CloudWatch Logs Insights can filter/aggregate by field --
 most usefully `alert_id`, since that's what ties one log line to one
 investigation across all four Lambdas and the Step Functions execution
-wrapping them. This is deliberately separate from the DynamoDB AuditLog
-table: the audit log is the business-level trace (what a demo visitor sees
-in the UI), this is the technical/ops trace (what an engineer watching
+wrapping them. This is deliberately separate from the DynamoDB Traces
+table: spans are the business-level trace (what a demo visitor sees in
+the UI), this is the technical/ops trace (what an engineer watching
 CloudWatch during a demo, or debugging afterward, needs) -- same "exact
 path taken" story, two different audiences.
 """
