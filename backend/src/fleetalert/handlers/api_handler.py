@@ -16,7 +16,7 @@ from typing import Any
 
 import boto3
 
-from fleetalert import repositories
+from fleetalert import budget, repositories
 from fleetalert.agent.guardrails import GuardrailViolation
 from fleetalert.agent.loop import confirm_fix, reject_fix
 from fleetalert.email_intake import deliver_inbound_email
@@ -56,7 +56,12 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
 
         if route_key == "POST /demo/email":
             result = deliver_inbound_email(start_investigation, trigger="button")
-            return _json(202 if result["started"] else 409, result)
+            if result["started"]:
+                return _json(202, result)
+            return _json(429 if result.get("budget_exhausted") else 409, result)
+
+        if route_key == "GET /demo/usage":
+            return _json(200, budget.usage())
 
         if route_key == "POST /demo/reset":
             return _reset_demo_data()
@@ -83,6 +88,10 @@ def _list_alerts_with_machine_info() -> list[dict[str, Any]]:
 
 def _start_investigation(alert_id: str) -> dict[str, Any]:
     log = alert_logger(__name__, alert_id)
+    if budget.usage()["exhausted"]:
+        # A friendly early answer; the loop enforces the cap regardless.
+        log.info("investigation refused: daily budget exhausted")
+        return _json(429, {"error": budget.exhausted_message()})
     start_investigation(alert_id, "web")
     log.info("investigation triggered via API")
     return _json(202, {"alert_id": alert_id, "status": "investigation_started"})

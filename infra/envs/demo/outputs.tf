@@ -10,6 +10,15 @@ output "anthropic_secret_arn" {
   value = aws_secretsmanager_secret.anthropic_api_key.arn
 }
 
+output "alarm_topic_arn" {
+  description = "Subscribe an email address to this topic to receive alarms."
+  value       = aws_sns_topic.alarms.arn
+}
+
+output "dashboard_url" {
+  value = "https://${var.aws_region}.console.aws.amazon.com/cloudwatch/home?region=${var.aws_region}#dashboards/dashboard/${aws_cloudwatch_dashboard.main.dashboard_name}"
+}
+
 output "api_endpoint" {
   value = module.api_gateway.api_endpoint
 }

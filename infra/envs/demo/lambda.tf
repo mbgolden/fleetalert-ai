@@ -22,8 +22,10 @@ locals {
   }
 
   common_environment = {
-    FLEETALERT_ENV = "demo"
-    LOG_LEVEL      = "INFO"
+    FLEETALERT_ENV                     = "demo"
+    LOG_LEVEL                          = "INFO"
+    FLEETALERT_DAILY_INVESTIGATION_CAP = tostring(var.daily_investigation_cap)
+    FLEETALERT_DAILY_COST_CAP_USD      = tostring(var.daily_cost_cap_usd)
   }
 
   common_tags = {

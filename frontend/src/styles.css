@@ -659,3 +659,24 @@ button.email-button:hover:not(:disabled) {
   color: var(--text-dim);
   font-size: 0.8rem;
 }
+
+/* --- Cost guard --- */
+
+.usage-line {
+  margin: 0 0 1rem;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-line.exhausted {
+  color: var(--medium);
+}
+
+.header-notice {
+  margin: 0;
+  padding: 0.6rem 2rem;
+  background: color-mix(in srgb, var(--medium) 12%, transparent);
+  color: var(--medium);
+  font-size: 0.9rem;
+}

@@ -20,6 +20,7 @@ TELEMETRY_TABLE = _table_name("telemetry")
 ALERTS_TABLE = _table_name("alerts")
 KNOWLEDGE_BASE_TABLE = _table_name("knowledge-base")
 TRACES_TABLE = _table_name("traces")
+USAGE_TABLE = _table_name("usage")
 TRACES_ALERT_INDEX = "alert_id-span_id-index"
 
 

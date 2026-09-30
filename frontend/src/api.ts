@@ -135,6 +135,22 @@ export interface EmailDelivery {
   started: boolean;
   alert_id: string;
   reason?: string;
+  budget_exhausted?: boolean;
+}
+
+// Today's (UTC) demo usage against the daily cost guard (ADR-0017).
+export interface DemoUsage {
+  day: string;
+  investigations: number;
+  investigation_cap: number;
+  cost_usd: number;
+  cost_cap_usd: number;
+  exhausted: boolean;
+  resets_at: string;
+}
+
+export function getUsage(): Promise<DemoUsage> {
+  return request("/demo/usage");
 }
 
 // 202 when the email starts an investigation, 409 when the last one is
@@ -143,8 +159,13 @@ export async function simulateInboundEmail(): Promise<EmailDelivery> {
   try {
     return await request<EmailDelivery>("/demo/email", { method: "POST" });
   } catch (err) {
-    if (err instanceof ApiError && err.status === 409) {
-      return { started: false, alert_id: "ALERT-1006", reason: err.message };
+    if (err instanceof ApiError && (err.status === 409 || err.status === 429)) {
+      return {
+        started: false,
+        alert_id: "ALERT-1006",
+        reason: err.message,
+        budget_exhausted: err.status === 429,
+      };
     }
     throw err;
   }

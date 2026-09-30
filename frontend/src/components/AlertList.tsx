@@ -1,18 +1,23 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { type Alert, listAlerts } from "../api";
+import { type Alert, type DemoUsage, getUsage, listAlerts } from "../api";
 
 const SEVERITY_LABEL: Record<string, string> = { low: "Low", medium: "Medium", high: "High" };
 
 export default function AlertList() {
   const [alerts, setAlerts] = useState<Alert[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [usage, setUsage] = useState<DemoUsage | null>(null);
 
   useEffect(() => {
     listAlerts()
       .then((data) => setAlerts(data.alerts))
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
+    // Optional: the list still works if this fails.
+    getUsage()
+      .then(setUsage)
+      .catch(() => setUsage(null));
   }, []);
 
   if (error) return <p className="error">Failed to load alerts: {error}</p>;
@@ -38,6 +43,13 @@ export default function AlertList() {
             hours (or now, via <em>Simulate inbound email</em>)
           </li>
         </ul>
+        {usage && (
+          <p className={`usage-line${usage.exhausted ? " exhausted" : ""}`}>
+            Today&apos;s demo budget: {usage.investigations} of {usage.investigation_cap} investigations,
+            ${usage.cost_usd.toFixed(2)} of ${usage.cost_cap_usd.toFixed(2)} estimated spend
+            {usage.exhausted && " (used up, resets at 00:00 UTC)"}
+          </p>
+        )}
         <a
           href="https://10finger.dev/project/fleetalert-ai"
           target="_blank"

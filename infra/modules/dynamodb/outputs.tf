@@ -5,6 +5,7 @@ output "table_names" {
     alerts         = aws_dynamodb_table.alerts.name
     knowledge_base = aws_dynamodb_table.knowledge_base.name
     traces         = aws_dynamodb_table.traces.name
+    usage          = aws_dynamodb_table.usage.name
   }
 }
 
@@ -15,5 +16,6 @@ output "table_arns" {
     alerts         = aws_dynamodb_table.alerts.arn
     knowledge_base = aws_dynamodb_table.knowledge_base.arn
     traces         = aws_dynamodb_table.traces.arn
+    usage          = aws_dynamodb_table.usage.arn
   }
 }

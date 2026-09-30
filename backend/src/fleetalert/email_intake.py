@@ -18,7 +18,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
-from fleetalert import repositories
+from fleetalert import budget, repositories
 from fleetalert.logging_config import alert_logger
 from fleetalert.repositories import ConcurrentUpdateError
 from fleetalert.seed_data import EMAIL_ALERT_ID, SEED_ALERTS
@@ -54,6 +54,15 @@ def deliver_inbound_email(start: StartInvestigation, *, trigger: str) -> dict[st
             "started": False,
             "alert_id": EMAIL_ALERT_ID,
             "reason": f"The last email is still being handled (status: {alert.get('status')}).",
+        }
+
+    if budget.usage()["exhausted"]:
+        log.info("inbound email (%s) held: daily budget exhausted", trigger)
+        return {
+            "started": False,
+            "alert_id": EMAIL_ALERT_ID,
+            "budget_exhausted": True,
+            "reason": budget.exhausted_message(),
         }
 
     email = {**_seed_email_alert()["inbound_email"], "received_at": datetime.now(UTC).isoformat()}
