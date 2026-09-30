@@ -19,7 +19,7 @@ MODEL = "claude-sonnet-5"
 
 def _investigation(
     fix_id: str,
-    description: str = "Matches KB evidence.",
+    description: str = "Telemetry and KB-003 agree: the readings match the documented pattern for this fix.",
     *,
     confidence: float = 0.8,
     telemetry: bool = True,
@@ -76,7 +76,7 @@ def test_ignoring_the_kb_conflict_fails() -> None:
 def test_noting_the_kb_conflict_passes() -> None:
     passed, _ = _grade(
         "sensor-glitch",
-        _investigation("restart_sensor", "KB-001 and KB-002 disagree; the telemetry shows one spike."),
+        _investigation("restart_sensor", "KB-001 and KB-002 disagree; the telemetry shows one 121 C spike with coolant level flat at 96%."),
     )
     assert passed
 
@@ -85,7 +85,7 @@ def test_rejection_round_that_routes_to_support_passes() -> None:
     passed, grades = _grade(
         "oil-pressure-rejected",
         _investigation("schedule_service_visit"),
-        _investigation("escalate_to_technician", "Nothing remote fits KB-004.", confidence=0.4),
+        _investigation("escalate_to_technician", "Nothing remote fits: KB-004 says a sensor restart does not fix low oil pressure (19 psi).", confidence=0.4),
     )
     assert passed
     assert grades["round 2: outcome"].detail.startswith(f"got {ROUTED}")
@@ -132,3 +132,18 @@ def test_report_and_gate() -> None:
     assert "FAIL" in report
     assert "| `cabin-drift` | 2/3 (-33%)" in report
     assert "restart_sensor ×1" in report
+
+
+def test_placeholder_rationale_fails() -> None:
+    passed, grades = _grade("cabin-drift", _investigation("send_diagnostic_reset", "Test"))
+    assert not passed
+    assert "Test" in grades["rationale cites evidence"].detail
+
+
+def test_rationale_without_any_evidence_fails() -> None:
+    passed, grades = _grade(
+        "cabin-drift",
+        _investigation("send_diagnostic_reset", "This looks like the usual problem and a reset should sort it out nicely."),
+    )
+    assert not passed
+    assert not grades["rationale cites evidence"].passed

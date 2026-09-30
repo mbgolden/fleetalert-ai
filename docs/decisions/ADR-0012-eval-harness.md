@@ -94,3 +94,35 @@ was in the test data, not the model.
   option" line isn't biasing the ambiguous case the way it was feared to.
 - The failed-trial section of the report now includes the model's own
   rationale, so a miss can be triaged from the job summary alone.
+
+The follow-up run passed every scenario 3/3, which confirmed both changes.
+cabin-drift proposed the reset every time, and compressor-no-kb was
+overconfident in one trial of three, down from three.
+
+## First recorded run (2026-09-30 12:38, Sonnet 5)
+The run passed its gate at 94%, but reading the recordings turned up a real
+bug that the pass rate alone would have hidden.
+
+- **`sensor-glitch` #3 proposed the right fix with the rationale "Test".**
+  The only reason it failed was that the conflict grader found no mention
+  of KB-001/KB-002. In another scenario, that proposal would have passed.
+- **The cause was output truncation.** The recording of trial #1 shows the
+  second response stopped at `max_tokens` (2048). The `propose_fix` call was
+  cut off and arrived with only `fix_id`. The loop never checked
+  `stop_reason`, so it ran the truncated call and returned a validation
+  error. The model then resent it twice without `confidence`, which came
+  after the long description in the schema, before getting it right. Trial
+  #3 went the same way, and its last attempt filled the field with "Test".
+- **Fixes:**
+  - The loop never runs tool calls from a `max_tokens` response. It
+    records a `guardrail.truncated_output` span and tells the model to
+    retry.
+  - The output ceiling is now 4096 tokens. That's a ceiling, not a cost.
+  - `confidence` now comes before `description` in the schema, and the
+    description asks for 2-5 sentences.
+  - A new gating grader requires every rationale to be at least 60
+    characters and cite a KB entry or a reading.
+  - Truncations count toward the reported tool-error warning.
+- These changes alter the prompt and tools, so the replay tier now reports
+  all six cassettes as stale and skips them. That is its designed behaviour.
+  They are re-recorded by the next live run.

@@ -59,7 +59,14 @@ _CONTINUE_NUDGE = (
     "Continue the investigation using the available tools, or call "
     "propose_fix once you have enough information."
 )
+_TRUNCATED_MESSAGE = (
+    "Your response hit the output limit and this tool call was cut off, so it "
+    "was not run. Call it again with less text around it and a shorter "
+    "description."
+)
 _MODEL_TEXT_LIMIT = 2000
+# A ceiling, not a cost: output is billed per token actually generated.
+_MAX_OUTPUT_TOKENS = 4096
 
 
 def _json_default(value: Any) -> Any:
@@ -163,7 +170,7 @@ def run_investigation(
         call_watch = Stopwatch()
         response = client.messages.create(
             model=model,
-            max_tokens=2048,
+            max_tokens=_MAX_OUTPUT_TOKENS,
             system=system_prompt,
             tools=tools,
             messages=messages,
@@ -201,6 +208,37 @@ def run_investigation(
         if not tool_use_blocks:
             log.info("iteration %d/%d: model returned no tool call, nudging it to continue", iteration, max_iterations)
             messages.append({"role": "user", "content": _CONTINUE_NUDGE})
+            continue
+
+        if getattr(response, "stop_reason", None) == "max_tokens":
+            # The response was cut off mid-generation, so its tool calls may
+            # be missing fields. Never run a truncated call: tell the model
+            # (the API needs a result for every tool_use) and let it retry,
+            # inside the same bounded loop.
+            log.warning("iteration %d/%d: response hit max_tokens, skipping %d truncated tool call(s)", iteration, max_iterations, len(tool_use_blocks))
+            tracer.record(
+                name="guardrail.truncated_output",
+                kind=SpanKind.DECISION,
+                actor="system",
+                status=SpanStatus.FAILURE,
+                parent_span_id=model_span_id,
+                input={"tool_calls": [b.name for b in tool_use_blocks]},
+                output={"error": "response hit the output limit; truncated tool calls were not run"},
+            )
+            messages.append(
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": b.id,
+                            "is_error": True,
+                            "content": _TRUNCATED_MESSAGE,
+                        }
+                        for b in tool_use_blocks
+                    ],
+                }
+            )
             continue
 
         tool_results = []
@@ -569,7 +607,8 @@ def _build_system_prompt(machine: dict[str, Any]) -> str:
         "explicitly in your proposed fix's description rather than silently "
         "picking one -- note the conflict and prefer the more cautious "
         "option. Call propose_fix exactly once, when ready to finalize a "
-        "recommendation. You cannot execute any fix yourself; a human must "
+        "recommendation, and keep its description to a few sentences citing "
+        "the telemetry values and KB entries behind it. You cannot execute any fix yourself; a human must "
         "confirm it first.\n\n"
         "Set confidence to reflect the evidence. If no knowledge base entry "
         "matches the symptom, you are reasoning without a documented fix: say "

@@ -35,5 +35,6 @@ recorded as a decision span:
   separately with only `fix_id`. Once that crashed the run, and once it left
   a half-empty proposal in the UI. The schema now rejects both, and the model
   gets a tool error naming the missing fields.
+- **Cut off at the output limit.** A recorded eval run hit max_tokens partway through this call, so it arrived with only . The model then resent it twice without , which came after the long description in the schema, and finally sent a placeholder rationale. Now the loop never runs a tool call from a  response (it records  and asks for a retry), the output ceiling is 4096,  comes before , and the description asks for 2-5 sentences.
 - **A non-whitelisted fix_id is not an error.** It is a legitimate "I'd
   escalate this" answer, and it routes to human support.
