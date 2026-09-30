@@ -82,5 +82,13 @@ resolved by evidence, which is the whole point of the seeded telemetry
 decide which entry's conditions hold, and prefer caution only when the
 evidence can't tell them apart. The sensor-glitch eval had passed 3/3 under
 the old wording, so this bias only showed with the extra push from the
-email. The next recorded eval run measures the change across every
-scenario, and records the first `email-glitch` cassette.
+email.
+
+**Measured (recorded run 2026-09-30 19:26, Sonnet 5):** 21/21 trials passed,
+with no warnings, for $0.64 in total.
+- `email-glitch` chose `restart_sensor` 3/3, at 0.82-0.85 confidence.
+- `sensor-glitch` still passed 3/3.
+- `coolant-leak` still chose the service visit 3/3, so the change didn't
+  swing it the other way.
+- As a side effect, `compressor-no-kb` came in at 0.55-0.60 confidence in
+  all three trials, clearing the calibration warning for the first time.
