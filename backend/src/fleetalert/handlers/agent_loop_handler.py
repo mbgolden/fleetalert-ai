@@ -48,9 +48,8 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
             # real investigation onto the stub.
             if not loadtest.is_load_test(alert_id):
                 raise ValueError(f"load_test is only allowed for {loadtest.LOAD_TEST_PREFIX} alerts")
-            result = run_investigation(
-                alert_id, loadtest.StubModelClient(), model=loadtest.STUB_MODEL, entry_point="loadtest"
-            )
+            stub = loadtest.StubModelClient(latency_ms=int(event.get("model_latency_ms") or 0))
+            result = run_investigation(alert_id, stub, model=loadtest.STUB_MODEL, entry_point="loadtest")
         else:
             client = anthropic.Anthropic(api_key=_get_anthropic_api_key())
             result = run_investigation(alert_id, client, entry_point=event.get("entry_point", "web"))

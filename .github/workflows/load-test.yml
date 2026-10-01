@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       levels:
-        description: "Comma-separated rate_per_hour:minutes levels (minutes <= 12)"
+        description: "Comma-separated rate_per_hour:minutes[:model_latency_ms] levels (minutes <= 12)"
         required: true
         default: "1000:5,10000:10,36000:5"
       keep_data:
@@ -67,18 +67,18 @@ jobs:
           echo "## Load test ($stamp)" >> "$GITHUB_STEP_SUMMARY"
           IFS=',' read -ra LEVELS <<< "$LEVELS_INPUT"
           for level in "${LEVELS[@]}"; do
-            rate="${level%%:*}"
-            minutes="${level##*:}"
-            if ! [[ "$rate" =~ ^[0-9]+$ && "$minutes" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-              echo "::error::Bad level '$level'; expected rate_per_hour:minutes, e.g. 10000:10"
+            IFS=':' read -r rate minutes latency <<< "$level"
+            latency="${latency:-0}"
+            if ! [[ "$rate" =~ ^[0-9]+$ && "$minutes" =~ ^[0-9]+(\.[0-9]+)?$ && "$latency" =~ ^[0-9]+$ ]]; then
+              echo "::error::Bad level '$level'; expected rate_per_hour:minutes[:model_latency_ms], e.g. 10000:10 or 3600:5:2000"
               exit 1
             fi
-            label="${GITHUB_RUN_ID}-${rate}"
-            echo "::group::$rate/hour for $minutes minutes ($label)"
+            label="${GITHUB_RUN_ID}-${rate}-${latency}"
+            echo "::group::$rate/hour for $minutes minutes, model latency ${latency} ms ($label)"
             aws lambda invoke --function-name "$FUNCTION" --invocation-type Event \
               --cli-binary-format raw-in-base64-out \
-              --payload "$(jq -nc --arg l "$label" --argjson r "$rate" --argjson m "$minutes" \
-                '{action:"run", label:$l, rate_per_hour:$r, minutes:$m}')" /dev/null
+              --payload "$(jq -nc --arg l "$label" --argjson r "$rate" --argjson m "$minutes" --argjson lat "$latency" \
+                '{action:"run", label:$l, rate_per_hour:$r, minutes:$m, model_latency_ms:$lat}')" /dev/null
             # Wait for generation to finish and the queue to drain: the run's
             # own length plus up to 15 minutes.
             polls=$(( (${minutes%.*} + 15) * 3 ))
@@ -90,7 +90,7 @@ jobs:
               echo "poll $i: generation $generation, $(jq '.alerts' report.json) alerts, $pending pending"
               [ "$generation" = "done" ] && [ "$pending" = "0" ] && break
             done
-            cp report.json "docs/load-tests/${stamp}-${rate}.json"
+            cp report.json "docs/load-tests/${stamp}-${rate}-${latency}ms.json"
             jq -r '.markdown' report.json >> "$GITHUB_STEP_SUMMARY"
             jq -r '"Generator: started \(.run.started) of \(.run.requested) (start errors: \(.run.start_errors | tostring)), achieved \(.run.achieved_rate_per_hour)/hour\n"' report.json >> "$GITHUB_STEP_SUMMARY"
             if [ "$KEEP_DATA" != "true" ]; then
