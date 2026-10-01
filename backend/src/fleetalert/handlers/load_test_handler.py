@@ -53,7 +53,11 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     label = str(event["label"])
     if action == "run":
         return loadtest.run(
-            label, rate_per_hour=int(event["rate_per_hour"]), minutes=float(event["minutes"]), start=_start
+            label,
+            rate_per_hour=int(event["rate_per_hour"]),
+            minutes=float(event["minutes"]),
+            model_latency_ms=int(event.get("model_latency_ms") or 0),
+            start=_start,
         )
     if action == "report":
         return loadtest.report(label, cloudwatch=_cloudwatch)

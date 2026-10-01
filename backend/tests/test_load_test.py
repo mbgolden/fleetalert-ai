@@ -86,7 +86,7 @@ def test_the_generator_paces_starts_and_counts_refusals(dynamodb_tables: None) -
     assert result["requested"] == 5  # 1,200/hour for 15 seconds
     assert result["started"] == 4
     assert result["start_errors"] == {"RuntimeError": 1}
-    assert calls[0] == ("LT-t3-00000", "loadtest", {"load_test": True})
+    assert calls[0] == ("LT-t3-00000", "loadtest", {"load_test": True, "model_latency_ms": 0})
     assert clock.slept == pytest.approx([3.0] * 5)  # one start every 3 seconds
     assert len(repositories.list_load_test_alerts("t3")) == 5
 
@@ -212,3 +212,42 @@ def test_the_dynamodb_resource_is_reused() -> None:
     from fleetalert.db import get_dynamodb_resource
 
     assert get_dynamodb_resource() is get_dynamodb_resource()
+
+
+def test_simulated_model_latency_is_slept_per_model_call(dynamodb_tables: None, no_real_model: None) -> None:
+    reseed_demo_data()
+    slept: list[float] = []
+    stub = loadtest.StubModelClient(latency_ms=2000, sleep=slept.append)
+    loadtest.prepare()
+    repositories.create_alert(
+        {"alert_id": "LT-lat-0", "machine_id": "M-LT", "status": "open", "alert_type": "coolant_temp_spike",
+         "severity": "medium", "created_at": loadtest.ALERT_AT.isoformat(), "load_test": True}
+    )
+    from fleetalert.agent.loop import run_investigation
+
+    run_investigation("LT-lat-0", stub, model=loadtest.STUB_MODEL, entry_point="loadtest")
+
+    assert slept == [2.0, 2.0, 2.0]  # three model calls per scripted round
+
+
+def test_latency_is_passed_from_the_run_to_each_execution(dynamodb_tables: None) -> None:
+    extras: list[dict[str, Any]] = []
+    loadtest.run(
+        "lat", rate_per_hour=3600, minutes=1 / 60, model_latency_ms=1500,
+        start=lambda _a, _e, extra: extras.append(extra), sleep=lambda _s: None,
+    )
+    assert extras == [{"load_test": True, "model_latency_ms": 1500}]
+    assert int(repositories.get_load_test_run("lat")["model_latency_ms"]) == 1500  # type: ignore[index]
+
+
+def test_report_reads_status_before_listing_alerts(dynamodb_tables: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A run that finishes while its alerts are being listed must not be
+    reported done against the older list."""
+    order: list[str] = []
+    real_get, real_list = repositories.get_load_test_run, repositories.list_load_test_alerts
+    monkeypatch.setattr(repositories, "get_load_test_run", lambda label: (order.append("status"), real_get(label))[1])
+    monkeypatch.setattr(repositories, "list_load_test_alerts", lambda label: (order.append("alerts"), real_list(label))[1])
+
+    loadtest.report("nothing-ran")
+
+    assert order == ["status", "alerts"]

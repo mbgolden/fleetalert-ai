@@ -262,7 +262,8 @@ def list_alerts() -> list[dict[str, Any]]:
 
 def list_load_test_alerts(label: str) -> list[dict[str, Any]]:
     table = get_dynamodb_resource().Table(ALERTS_TABLE)
-    return _scan_all(table, FilterExpression=Attr("load_test_label").eq(label))
+    # Strongly consistent, so a report right after the last write sees it.
+    return _scan_all(table, FilterExpression=Attr("load_test_label").eq(label), ConsistentRead=True)
 
 
 def delete_alert(alert_id: str) -> None:

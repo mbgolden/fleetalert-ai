@@ -72,8 +72,20 @@ _SCRIPT: list[tuple[str, dict[str, Any]]] = [
 ]
 
 
+MAX_MODEL_LATENCY_MS = 30_000
+
+
 class _StubMessages:
+    def __init__(self, latency_ms: int, sleep: Callable[[float], None]) -> None:
+        self._latency_s = min(max(latency_ms, 0), MAX_MODEL_LATENCY_MS) / 1000
+        self._sleep = sleep
+
     def create(self, **kwargs: Any) -> SimpleNamespace:
+        # Stand in for the time a real model call takes. Without it a round
+        # is ~0.4 s and concurrency never builds up; a real round holds its
+        # Lambda for several seconds per call.
+        if self._latency_s:
+            self._sleep(self._latency_s)
         turn = sum(1 for m in kwargs["messages"] if m.get("role") == "assistant")
         name, tool_input = _SCRIPT[min(turn, len(_SCRIPT) - 1)]
         return SimpleNamespace(
@@ -88,8 +100,8 @@ class _StubMessages:
 class StubModelClient:
     """Duck-types the slice of the Anthropic client the loop uses."""
 
-    def __init__(self) -> None:
-        self.messages = _StubMessages()
+    def __init__(self, latency_ms: int = 0, sleep: Callable[[float], None] = time.sleep) -> None:
+        self.messages = _StubMessages(latency_ms, sleep)
 
 
 # --- Generating load ---------------------------------------------------------
@@ -111,6 +123,7 @@ def run(
     rate_per_hour: int,
     minutes: float,
     start: StartExecution,
+    model_latency_ms: int = 0,
     sleep: Callable[[float], None] = time.sleep,
     clock: Callable[[], float] = time.monotonic,
 ) -> dict[str, Any]:
@@ -124,6 +137,7 @@ def run(
     if not repositories.put_load_test_run(
         label,
         {"status": "running", "requested": total, "rate_per_hour": rate_per_hour, "minutes": minutes,
+         "model_latency_ms": model_latency_ms,
          "started_at": datetime.now(UTC).isoformat(), "expires_at": int(time.time()) + 90 * 86400},
         if_new=True,
     ):
@@ -149,7 +163,7 @@ def run(
             }
         )
         try:
-            start(alert_id, "loadtest", {"load_test": True})
+            start(alert_id, "loadtest", {"load_test": True, "model_latency_ms": model_latency_ms})
             started += 1
         except Exception as exc:  # noqa: BLE001 -- a refused start is a measurement, not a crash
             errors[type(exc).__name__] += 1
@@ -161,6 +175,7 @@ def run(
         "label": label,
         "rate_per_hour": rate_per_hour,
         "minutes": minutes,
+        "model_latency_ms": model_latency_ms,
         "requested": total,
         "started": started,
         "start_errors": dict(errors),
@@ -197,6 +212,11 @@ def report(label: str, *, cloudwatch: Callable[[str, str], dict[str, Any]] | Non
     (Step Functions scheduling, Lambda cold starts, retries after throttling);
     processing = the round itself; end_to_end = both.
     """
+    # Status first, alerts second. The other way round, a run that finished
+    # while the alerts were being read was reported "done" with an alert
+    # list from before its end (the second load test lost its last ~25 s
+    # of rounds that way).
+    run_record = repositories.get_load_test_run(label) or {}
     alerts = repositories.list_load_test_alerts(label)
     queue, processing, end_to_end = [], [], []
     outcomes: Counter[str] = Counter()
@@ -222,7 +242,6 @@ def report(label: str, *, cloudwatch: Callable[[str, str], dict[str, Any]] | Non
         last_done = max(last_done or str(root["timestamp"]), str(root["timestamp"]))
 
     completed = len(processing)
-    run_record = repositories.get_load_test_run(label) or {}
     window_s = _ms_between(first_start, last_done) / 1000 if first_start and last_done else None
     result: dict[str, Any] = {
         "label": label,
@@ -263,6 +282,7 @@ def to_markdown(r: dict[str, Any]) -> str:
         f"### Load test `{r['label']}`",
         "",
         f"{r['completed']:,} of {r['alerts']:,} rounds completed, {r['failed']} failed, {r['pending']} still pending"
+        + (f" · simulated model latency {r['run']['model_latency_ms']:,.0f} ms per call" if r.get("run", {}).get("model_latency_ms") else "")
         + (f" · throughput {r['throughput_per_hour']:,}/hour" if r.get("throughput_per_hour") else ""),
         "",
         "| Timing (ms) | p50 | p95 | p99 | max |",

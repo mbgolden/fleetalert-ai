@@ -102,4 +102,47 @@ exactly 15 minutes apart.
 - Locally, the same change cut the backend test suite from 36 s to 23 s.
 
 ## Results
-_Filled in from `docs/load-tests/` after the rerun._
+
+### Rerun with connection reuse (2026-10-01 16:30, no model latency)
+Reports: `docs/load-tests/2026-10-01T1630-*.json`. The run finished in 21
+minutes with no duplicates.
+
+**The connection fix**, measured on model-free rounds:
+
+| Round processing | Before | After |
+|---|---|---|
+| p50 | 2,317 ms | **405 ms** (−83%) |
+| p95 | 3,002 ms | **444 ms** (−85%) |
+
+**The three levels:**
+
+| Level | Started | Failed | Throughput | End to end p50 / p95 / p99 | Lambda throttles | Peak concurrency |
+|---|---|---|---|---|---|---|
+| 1,000/h for 5 min | 83 | 0 | 1,010/h | 621 / 685 / 6,268 ms | 0 | 2 |
+| 10,000/h for 10 min | 1,667 | 0 | 9,995/h | 605 / 674 / 813 ms | 0 | 3 |
+| 36,000/h for 5 min | 3,000 | 0 | 35,872/h | 567 / 645 / 2,730 ms | 51 | 9 |
+
+- **Up to 10,000/h the pipeline keeps pace exactly, with flat latency.**
+- **At 36,000/h (10 per second) it reaches the first real limit.** The
+  agent-loop Lambda was throttled 51 times at a peak concurrency of 9,
+  which is consistent with an account concurrency limit of 10 shared with
+  the generator and report Lambdas.
+- **Nothing failed.** Step Functions retried the throttled invocations
+  with backoff and all of them completed. The cost was in the tail: p99
+  queue time rose to 2.3 s and the longest wait was 14.6 s.
+
+**A measurement bug in this run.** The two higher levels measured 1,604
+of 1,667 and 2,744 of 3,000 rounds. The report listed a run's alerts
+first and read its status afterwards. The generator finished in between,
+so the run was reported done against an alert list from about 25 seconds
+before its end. The numbers above are representative but not complete.
+The report now reads the status first and lists alerts with a consistent
+read.
+
+**What these numbers don't show.** These rounds have no model latency, so
+each holds a Lambda for about 0.4 s. A real investigation holds one for
+6-12 s (ADR-0021). With a concurrency limit of 10, real throughput would
+top out near one investigation per second, far below 36,000/h. The load
+test now takes a simulated model latency per level
+(`rate:minutes:latency_ms`), so the next run measures the realistic
+ceiling and what happens past it.
