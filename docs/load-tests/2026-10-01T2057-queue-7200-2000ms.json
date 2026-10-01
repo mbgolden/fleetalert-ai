@@ -1,0 +1,62 @@
+{
+  "label": "36925239186-queue-7200-2000",
+  "generation": "done",
+  "run": {
+    "minutes": 5.0,
+    "rate_per_hour": 7200.0,
+    "model_latency_ms": 2000.0,
+    "requested": 600.0,
+    "start_errors": {},
+    "label": "36925239186-queue-7200-2000",
+    "elapsed_s": 300.0,
+    "started": 600.0,
+    "achieved_rate_per_hour": 7200.0
+  },
+  "alerts": 600,
+  "completed": 600,
+  "failed": 0,
+  "pending": 0,
+  "outcomes": {
+    "routed_to_support": 600
+  },
+  "throughput_per_hour": 7060,
+  "queue_ms": {
+    "p50": 84,
+    "p95": 181,
+    "p99": 5542,
+    "max": 5797
+  },
+  "processing_ms": {
+    "p50": 6340,
+    "p95": 6480,
+    "p99": 6920,
+    "max": 6940
+  },
+  "end_to_end_ms": {
+    "p50": 6435,
+    "p95": 7007,
+    "p99": 12017,
+    "max": 12277
+  },
+  "window": {
+    "first_start": "2026-10-01T20:57:13.426642+00:00",
+    "last_completion": "2026-10-01T21:02:19.361565+00:00"
+  },
+  "aws": {
+    "worker_throttles": 0.0,
+    "worker_peak_concurrency": 25.0,
+    "agent_loop_throttles": 0.0,
+    "agent_loop_peak_concurrency": 0.0,
+    "api_throttles": 0.0,
+    "queue_oldest_message_s": 6.0,
+    "queue_peak_depth": 0.0,
+    "dead_letters": 0.0,
+    "sfn_executions_failed": 0.0
+  },
+  "markdown": "### Load test `36925239186-queue-7200-2000`\n\n600 of 600 rounds completed, 0 failed, 0 still pending · simulated model latency 2,000 ms per call · throughput 7,060/hour\n\n| Timing (ms) | p50 | p95 | p99 | max |\n|---|---|---|---|---|\n| Queue (start → round begins) | 84 | 181 | 5,542 | 5,797 |\n| Processing (the round) | 6,340 | 6,480 | 6,920 | 6,940 |\n| End to end | 6,435 | 7,007 | 12,017 | 12,277 |\n\nOutcomes: routed_to_support ×600\n\nAWS: worker_throttles 0, worker_peak_concurrency 25, agent_loop_throttles 0, agent_loop_peak_concurrency 0, api_throttles 0, queue_oldest_message_s 6, queue_peak_depth 0, dead_letters 0, sfn_executions_failed 0\n",
+  "path": "queue",
+  "api_probe": {
+    "ok": 55,
+    "errors": 0
+  }
+}

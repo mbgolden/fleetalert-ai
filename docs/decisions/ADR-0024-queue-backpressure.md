@@ -5,7 +5,8 @@ Accepted. Supersedes
 [ADR-0006](ADR-0006-defer-backpressure-until-real-feed.md), which designed
 this and deferred it until there was a feed to design against. The results
 are below, filled in from the recorded rerun. The worker cap was raised
-from 6 to 50 once the account limit went to 1,000 (see the last section).
+from 6 to 50 once the account limit went to 1,000, and rerun (see the last
+two sections).
 
 ## Context
 The load test (ADR-0023) pushed 7,200 investigations an hour, each holding
@@ -108,10 +109,10 @@ call. Report: `docs/load-tests/2026-10-01T1808-queue-7200-2000ms.json`.
   4,400/h) right up to the point it lost 16% of the work and took the site
   down. The queue gives up peak throughput for zero loss and a healthy API.
 
-**Next limits, in order:**
+**Next limits, in order (as of this run):**
 1. The account's Lambda concurrency: 10, against a default of 1,000. It's a
    quota request, after which the worker cap can rise by an order of
-   magnitude.
+   magnitude. (Done the same day; see the next section.)
 2. Then the model provider's rate limits, which this same queue absorbs.
 
 ## After the quota increase (2026-10-01): cap raised from 6 to 50
@@ -135,4 +136,41 @@ from 6 to 50.
 - 36,000/h is above the new ceiling. The backlog should grow during the
   burst and drain within a couple of minutes, with nothing lost.
 
-Results to follow from the recorded run.
+### Results at a cap of 50 (2026-10-01 20:57)
+Reports: `docs/load-tests/2026-10-01T2057-queue-*.json`. Both levels ran
+for 5 minutes with 2 s of simulated model time per call.
+
+| | 7,200/h, cap 6 (18:08) | 7,200/h, cap 50 | 36,000/h, cap 50 |
+|---|---|---|---|
+| Completed | 600 of 600 | 600 of 600 | 3,000 of 3,000 |
+| Lost or dead-lettered | 0 | 0 | 0 |
+| Throughput | 2,510/h | **7,060/h** | **24,364/h** |
+| Wait before a round began, p50 | 4.6 min | **84 ms** | 67 s |
+| Wait, p95 / max | 8.8 min / 9.4 min | 181 ms / 5.8 s | 2.2 min / 2.5 min |
+| End to end p50 / p95 | 4.7 min / 8.9 min | 6.4 s / 7.0 s | 73 s / 2.3 min |
+| Peak backlog | 386 | 0 | 865 |
+| Peak worker concurrency | 6 | 25 | 51 |
+| Lambda throttles (worker, API) | 0 | 0 | 0 |
+| Public API probes | 145 of 145 OK | 55 of 55 OK | 45 of 45 OK |
+
+- **The load that broke the direct path is now ordinary.** 7,200/h passed
+  straight through. The median alert waited 84 ms for a worker, where it
+  had waited 4.6 minutes at a cap of 6. The 5.8 s maximum is the first few
+  seconds of the burst, while SQS was still adding workers.
+- **Past the new ceiling, the queue did the same job at five times the
+  scale.** 36,000/h is above what 50 workers can do. The backlog reached
+  865, the longest wait was 2.5 minutes, and the queue drained 2.4 minutes
+  after the burst ended. Nothing was lost and the API stayed healthy.
+- **The ceiling is about 24,400/h.** 50 workers at 6.4 s a round predicts
+  about 28,000/h, so the workers were about 87% busy, including the ramp
+  at the start. At a cap of 6 that figure was 73%, so the shortfall noted
+  above shrinks as the cap grows.
+- **Two readings are slightly off and not explained.** Peak concurrency
+  was 51 against a cap of 50, and 25 at 7,200/h where about 13 workers
+  were busy on average. Neither caused a throttle. The second is likely
+  SQS starting more workers than it needs at the front of a burst.
+
+**The next limit** is the model provider's rate limit. These rounds used
+a scripted model, so 50 concurrent rounds here cost nothing. With a real
+model, 50 workers means up to 50 open model requests, and the cap is the
+setting to tune against that limit.
