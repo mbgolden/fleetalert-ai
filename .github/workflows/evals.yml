@@ -10,6 +10,7 @@ on:
       - backend/src/fleetalert/agent/**
       - backend/src/fleetalert/capabilities/**
       - backend/src/fleetalert/seed_data.py
+      - backend/src/fleetalert/autonomous.py
       - backend/src/fleetalert/repositories.py
       - backend/evals/*.py
       - .github/workflows/evals.yml
