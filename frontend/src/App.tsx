@@ -3,6 +3,16 @@ import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 
 import { resetDemoData, runDetector, simulateInboundEmail } from "./api";
 
+// Phones get the short label so all three demo buttons fit on one row.
+function ButtonLabel({ long, short }: { long: string; short: string }) {
+  return (
+    <>
+      <span className="label-long">{long}</span>
+      <span className="label-short">{short}</span>
+    </>
+  );
+}
+
 export default function App() {
   const [resetting, setResetting] = useState(false);
   const [emailing, setEmailing] = useState(false);
@@ -67,7 +77,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <div>
+        <div className="header-brand">
           <Link to="/" className="app-title">
             FleetAlert AI
           </Link>
@@ -83,13 +93,13 @@ export default function App() {
         </div>
         <div className="header-actions">
           <button className="email-button" disabled={emailing} onClick={handleEmail}>
-            {emailing ? "Sending…" : "Simulate inbound email"}
+            {emailing ? "Sending…" : <ButtonLabel long="Simulate inbound email" short="Simulate email" />}
           </button>
           <button className="detector-button" disabled={detecting} onClick={handleDetect}>
-            {detecting ? "Detecting…" : "Run telemetry detector"}
+            {detecting ? "Detecting…" : <ButtonLabel long="Run telemetry detector" short="Run detector" />}
           </button>
           <button className="reset-button" disabled={resetting} onClick={handleReset}>
-            {resetting ? "Resetting…" : "Reset Alerts"}
+            {resetting ? "Resetting…" : <ButtonLabel long="Reset Alerts" short="Reset" />}
           </button>
         </div>
       </header>
