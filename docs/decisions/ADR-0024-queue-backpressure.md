@@ -76,6 +76,39 @@ Two constraints shaped the design:
 - A dead-lettered message needs a person. Redrive is manual by design at
   this scale.
 
-## Results
-_Filled in from `docs/load-tests/` after the queued rerun of the 7,200/h
-level._
+## Results (2026-10-01 18:08)
+The level that broke the direct path was rerun through the queue: 7,200
+investigations an hour for 5 minutes, with 2 s of simulated model time per
+call. Report: `docs/load-tests/2026-10-01T1808-queue-7200-2000ms.json`.
+
+| | Direct (17:12 run) | Through the queue |
+|---|---|---|
+| Completed | 502 of 600 | **600 of 600** |
+| Lost without a trace | 98 (16%) | **0** |
+| Dead letters | n/a | 0 |
+| Public API during the level | about 90% of requests failed for about 6 min | **145 of 145 probes OK** |
+| Lambda throttles | agent loop and API throttled | **0 on worker, agent loop and API** |
+| Peak concurrency | 10 (the account limit) | **6 (the cap)** |
+| Throughput | about 4,400/h | 2,510/h |
+| Wait before a round began | lost ones waited forever | p50 4.6 min, p95 8.8 min, max 9.4 min |
+| Round processing p50 / p95 | 6.36 s / 6.38 s | 6.36 s / 6.38 s |
+
+- **Overload became latency.** The backlog peaked at 386 messages, the
+  oldest waited 530 s, and the queue drained fully about 9 minutes after
+  the burst ended.
+- **The cap held.** Worker concurrency never exceeded 6, which left the
+  API its slots. The backlog alarm threshold (10 minutes) was not reached.
+- **Throughput came in below the prediction.** 6 workers at 6.4 s a round
+  predicts about 3,400/h. The measured 2,510/h is about 4.4 workers busy
+  on average. The cause wasn't investigated. The likely one is the overhead
+  of SQS delivering one message per invocation. It's a tuning question
+  (batch size, the cap), not a correctness one.
+- **The trade is explicit.** The unprotected path was faster (about
+  4,400/h) right up to the point it lost 16% of the work and took the site
+  down. The queue gives up peak throughput for zero loss and a healthy API.
+
+**Next limits, in order:**
+1. The account's Lambda concurrency: 10, against a default of 1,000. It's a
+   quota request, after which the worker cap can rise by an order of
+   magnitude.
+2. Then the model provider's rate limits, which this same queue absorbs.
