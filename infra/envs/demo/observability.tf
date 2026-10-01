@@ -201,6 +201,20 @@ resource "aws_cloudwatch_dashboard" "main" {
         }
       },
       {
+        type = "metric", x = 12, y = 26, width = 12, height = 6
+        properties = {
+          title   = "Alert end states"
+          region  = var.aws_region
+          view    = "timeSeries"
+          stacked = true
+          period  = 3600
+          metrics = [
+            [{ expression = "SEARCH('{FleetAlert,EndState} MetricName=\"AlertEndStates\"', 'Sum', 3600)", id = "e1" }],
+            ["AWS/States", "ExecutionsFailed", "StateMachineArn", module.step_functions.state_machine_arn, { label = "failed", stat = "Sum" }],
+          ]
+        }
+      },
+      {
         type = "metric", x = 0, y = 26, width = 12, height = 6
         properties = {
           title   = "Telemetry detector runs, by result"

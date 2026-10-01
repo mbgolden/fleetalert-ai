@@ -87,7 +87,7 @@ Each one has a decision record in [`docs/decisions/`](docs/decisions/):
 backend/src/fleetalert/   agent loop, Capabilities Engine, tracing, metrics, budget, entry points, Lambda handlers
 backend/evals/            golden scenarios, graders, live and replay harness, recorded cassettes and results
 backend/tests/            unit and integration tests (moto; no AWS or API key needed)
-frontend/                 alert list, live trace viewer, confirm/reject, inbound email view, Evals page
+frontend/                 alert list, live trace viewer, confirm/reject, inbound email view, Activity and Evals pages
 infra/                    Terraform modules and the single demo environment
 docs/decisions/           ADR log (why things are the way they are)
 docs/capabilities/        one contract doc per capability
@@ -149,3 +149,4 @@ A merge to main applies Terraform and deploys the frontend
 | [0019](docs/decisions/ADR-0019-publish-eval-results-on-the-demo.md) | Publish eval results on the demo site |
 | [0020](docs/decisions/ADR-0020-autonomous-telemetry-detector.md) | An autonomous entry point: synthetic live telemetry and a rule-based detector |
 | [0021](docs/decisions/ADR-0021-migrate-to-sonnet-5-5.md) | Migrate the agent from Sonnet 5 to Sonnet 5.5, on eval evidence |
+| [0022](docs/decisions/ADR-0022-activity-feed-and-end-state-metric.md) | A cross-alert activity feed and an end-state metric |

@@ -151,10 +151,12 @@ def test_capability_guardrail_routing_and_human_spans_become_metrics() -> None:
     assert json.loads(block)["Guardrail"] == "guardrail.whitelist"
     assert metrics.records_for_span(_span(kind="decision", name="guardrail.whitelist", status="success")) == []
 
-    [routed] = metrics.records_for_span(
+    # Routing is also an end state, so it yields a second (AlertEndStates) line.
+    routed, end_state = metrics.records_for_span(
         _span(kind="decision", name="route_to_support", output={"reason": "confirmation_timed_out"})
     )
     assert json.loads(routed)["Reason"] == "confirmation_timed_out"
+    assert json.loads(end_state)["EndState"] == "routed_to_support"
 
     [human] = metrics.records_for_span(_span(kind="human_action", name="reject"))
     assert json.loads(human)["Action"] == "reject"

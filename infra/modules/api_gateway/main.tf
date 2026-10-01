@@ -28,6 +28,7 @@ locals {
     "POST /demo/email",
     "POST /demo/detect",
     "GET /demo/usage",
+    "GET /demo/activity",
     "POST /demo/reset",
   ]
 }

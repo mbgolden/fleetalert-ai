@@ -16,7 +16,7 @@ from typing import Any
 
 import boto3
 
-from fleetalert import budget, repositories
+from fleetalert import activity, budget, repositories
 from fleetalert.agent.guardrails import GuardrailViolation
 from fleetalert.agent.loop import confirm_fix, reject_fix
 from fleetalert.autonomous import run_detector
@@ -64,6 +64,9 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         if route_key == "POST /demo/detect":
             detected = run_detector(start_investigation, trigger="button")
             return _json(_detector_status(detected), detected)
+
+        if route_key == "GET /demo/activity":
+            return _json(200, {"events": activity.recent_activity()})
 
         if route_key == "GET /demo/usage":
             return _json(200, budget.usage())

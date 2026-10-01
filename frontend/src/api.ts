@@ -217,6 +217,26 @@ export async function runDetector(): Promise<DetectorRun> {
   }
 }
 
+// One decision or end state in the cross-alert activity feed (ADR-0022).
+export interface ActivityEvent {
+  timestamp: string;
+  alert_id: string;
+  trace_id: string;
+  entry_point: string;
+  category: "end_state" | "guardrail" | "human" | "outcome";
+  status: SpanStatus;
+  title: string;
+  detail: string;
+  end_state: "resolved" | "routed_to_support" | "failed" | "refused" | null;
+  count: number;
+  alert_type?: string;
+  machine_name?: string | null;
+}
+
+export function getActivity(): Promise<{ events: ActivityEvent[] }> {
+  return request("/demo/activity");
+}
+
 export function resetDemoData(): Promise<{ outcome: string }> {
   return request("/demo/reset", { method: "POST" });
 }
