@@ -23,7 +23,7 @@ from fleetalert.autonomous import run_detector
 from fleetalert.email_intake import deliver_inbound_email
 from fleetalert.logging_config import alert_logger, configure_logging
 from fleetalert.seed_data import reseed_demo_data
-from fleetalert.workflow import start_investigation
+from fleetalert.workflow import enqueue_investigation, start_investigation
 
 configure_logging()
 _logger = logging.getLogger(__name__)
@@ -56,13 +56,13 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
             return _json(200, {"alert_id": alert_id, "spans": repositories.get_spans_for_alert(alert_id)})
 
         if route_key == "POST /demo/email":
-            result = deliver_inbound_email(start_investigation, trigger="button")
+            result = deliver_inbound_email(enqueue_investigation, trigger="button")
             if result["started"]:
                 return _json(202, result)
             return _json(429 if result.get("budget_exhausted") else 409, result)
 
         if route_key == "POST /demo/detect":
-            detected = run_detector(start_investigation, trigger="button")
+            detected = run_detector(enqueue_investigation, trigger="button")
             return _json(_detector_status(detected), detected)
 
         if route_key == "GET /demo/activity":

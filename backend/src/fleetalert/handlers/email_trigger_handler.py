@@ -9,13 +9,13 @@ from typing import Any
 
 from fleetalert.email_intake import deliver_inbound_email
 from fleetalert.logging_config import configure_logging
-from fleetalert.workflow import start_investigation
+from fleetalert.workflow import enqueue_investigation
 
 configure_logging()
 _logger = logging.getLogger(__name__)
 
 
 def handler(_event: dict[str, Any], _context: Any) -> dict[str, Any]:
-    result = deliver_inbound_email(start_investigation, trigger="schedule")
+    result = deliver_inbound_email(enqueue_investigation, trigger="schedule")
     _logger.info("scheduled inbound email: %s", result)
     return result

@@ -20,6 +20,12 @@ variable "daily_cost_cap_usd" {
   default     = 1.25
 }
 
+variable "investigation_worker_concurrency" {
+  description = "Queued investigations run at once (ADR-0024). The account limit is 10; this leaves room for the API and the web path."
+  type        = number
+  default     = 6
+}
+
 variable "frontend_custom_domain" {
   type    = string
   default = "fleetalert.10finger.dev"

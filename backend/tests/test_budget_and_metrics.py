@@ -101,6 +101,7 @@ def test_api_refuses_investigations_and_emails_once_exhausted(
     _capped(monkeypatch, rounds=0)
     started: list[Any] = []
     monkeypatch.setattr(api_handler, "start_investigation", lambda *a: started.append(a))
+    monkeypatch.setattr(api_handler, "enqueue_investigation", lambda *a: started.append(a))
 
     investigate = api_handler.handler(
         {"routeKey": "POST /demo/alerts/{alert_id}/investigate", "pathParameters": {"alert_id": "ALERT-1001"}},

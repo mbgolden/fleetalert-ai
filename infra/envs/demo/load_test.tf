@@ -12,13 +12,18 @@ module "lambda_load_test" {
   memory_size   = 512
   source_dir    = local.lambda_source_dir
 
-  environment = merge(local.common_environment, {
+  environment = merge(local.common_environment, local.enqueue_environment, {
     STATE_MACHINE_ARN        = module.step_functions.state_machine_arn
     AGENT_LOOP_FUNCTION_NAME = module.lambda_agent_loop.function_name
+    WORKER_FUNCTION_NAME     = module.lambda_investigation_worker.function_name
+    API_FUNCTION_NAME        = module.lambda_api.function_name
+    INVESTIGATION_QUEUE_NAME = aws_sqs_queue.investigations.name
+    INVESTIGATION_DLQ_NAME   = aws_sqs_queue.investigations_dlq.name
   })
 
   policy_statements = [
     local.dynamodb_read_write_statement,
+    local.enqueue_statement,
     {
       effect    = "Allow"
       actions   = ["states:StartExecution"]

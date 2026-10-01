@@ -6,12 +6,13 @@ module "lambda_api" {
   timeout       = 30
   source_dir    = local.lambda_source_dir
 
-  environment = merge(local.common_environment, {
+  environment = merge(local.common_environment, local.enqueue_environment, {
     STATE_MACHINE_ARN = module.step_functions.state_machine_arn
   })
 
   policy_statements = [
     local.dynamodb_read_write_statement,
+    local.enqueue_statement,
     {
       effect    = "Allow"
       actions   = ["states:StartExecution"]

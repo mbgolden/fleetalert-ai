@@ -201,6 +201,35 @@ resource "aws_cloudwatch_dashboard" "main" {
         }
       },
       {
+        type = "metric", x = 0, y = 32, width = 12, height = 6
+        properties = {
+          title  = "Investigation queue"
+          region = var.aws_region
+          view   = "timeSeries"
+          period = 60
+          metrics = [
+            ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", aws_sqs_queue.investigations.name, { label = "waiting", stat = "Maximum" }],
+            ["AWS/SQS", "ApproximateAgeOfOldestMessage", "QueueName", aws_sqs_queue.investigations.name, { label = "oldest (s)", stat = "Maximum", yAxis = "right" }],
+            ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", aws_sqs_queue.investigations_dlq.name, { label = "dead letters", stat = "Maximum" }],
+          ]
+        }
+      },
+      {
+        type = "metric", x = 12, y = 32, width = 12, height = 6
+        properties = {
+          title  = "Lambda throttles and concurrency"
+          region = var.aws_region
+          view   = "timeSeries"
+          period = 60
+          metrics = [
+            ["AWS/Lambda", "ConcurrentExecutions", "FunctionName", module.lambda_investigation_worker.function_name, { label = "worker concurrency", stat = "Maximum" }],
+            ["AWS/Lambda", "Throttles", "FunctionName", module.lambda_investigation_worker.function_name, { label = "worker throttles", stat = "Sum" }],
+            ["AWS/Lambda", "Throttles", "FunctionName", module.lambda_api.function_name, { label = "API throttles", stat = "Sum" }],
+            ["AWS/Lambda", "Throttles", "FunctionName", module.lambda_agent_loop.function_name, { label = "agent-loop throttles", stat = "Sum" }],
+          ]
+        }
+      },
+      {
         type = "metric", x = 12, y = 26, width = 12, height = 6
         properties = {
           title   = "Alert end states"
@@ -250,6 +279,8 @@ resource "aws_cloudwatch_dashboard" "main" {
             aws_cloudwatch_metric_alarm.budget_exhausted.arn,
             aws_cloudwatch_metric_alarm.denied_capability_calls.arn,
             aws_cloudwatch_metric_alarm.failed_executions.arn,
+            aws_cloudwatch_metric_alarm.dead_letters.arn,
+            aws_cloudwatch_metric_alarm.queue_backlog.arn,
           ]
         }
       },

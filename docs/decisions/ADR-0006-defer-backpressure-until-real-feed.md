@@ -1,7 +1,9 @@
 # ADR-0006: Defer backpressure between alert intake and investigation
 
 ## Status
-Accepted
+Superseded by [ADR-0024](ADR-0024-queue-backpressure.md). The deferral held
+until a load test showed the need; the queue is now built, with a design
+adjusted to what the test found.
 
 ## Context
 Today, nothing produces alerts automatically. Alerts are pre-seeded

@@ -63,6 +63,11 @@ def metrics_enabled() -> bool:
     return os.environ.get("FLEETALERT_EMIT_METRICS", default) == "1"
 
 
+def investigation_queue_url() -> str | None:
+    """Set by Terraform on every Lambda that enqueues investigations."""
+    return os.environ.get("INVESTIGATION_QUEUE_URL")
+
+
 def log_level() -> str:
     return os.environ.get("LOG_LEVEL", "INFO")
 

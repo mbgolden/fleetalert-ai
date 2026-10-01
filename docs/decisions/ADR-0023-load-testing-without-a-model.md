@@ -146,3 +146,37 @@ top out near one investigation per second, far below 36,000/h. The load
 test now takes a simulated model latency per level
 (`rate:minutes:latency_ms`), so the next run measures the realistic
 ceiling and what happens past it.
+
+### Realistic latency (2026-10-01 17:12, 2 s per model call, direct path)
+Reports: `docs/load-tests/2026-10-01T1712-*.json`. Each round now held a
+Lambda for about 6.4 s, like a real investigation. The account's Lambda
+concurrency limit was confirmed in Service Quotas: **10** (the AWS default
+is 1,000; new accounts start at 10).
+
+| Level | Started | Completed | Lost | Throughput | End to end p50 / p95 | Peak concurrency |
+|---|---|---|---|---|---|---|
+| 1,800/h | 150 | 150 | 0 | 1,773/h | 6.6 s / 7.2 s | 7 |
+| 3,600/h | 300 | 300 | 0 | 3,535/h | 6.5 s / 6.6 s | 9 |
+| 7,200/h | 600 | 502 | **98 (16%)** | about 4,400/h | n/a | 10 |
+
+The third level's row was reconstructed from the alerts' traces through
+the public API, because the workflow itself failed mid-level (see 4).
+
+**What broke at 7,200/h:**
+1. **A ceiling of about 4,400 investigations an hour.** That's what 10
+   concurrent Lambdas at 6.4 s a round predicts.
+2. **98 investigations were lost silently.** Step Functions retried each
+   throttled invocation six times over about two minutes, then failed the
+   execution. The Lambda that would have marked the alert failed never
+   ran, so those alerts stayed `open` with no trace at all.
+3. **The public API went down.** Account concurrency is one shared pool.
+   For about six minutes (17:23-17:29 UTC), about 90% of requests to the
+   demo API returned 503, because the API's own Lambda couldn't get a
+   slot.
+4. **The test's own monitoring was throttled too.** The workflow's report
+   call failed (CLI exit 254), so the run died mid-level and didn't clean
+   up.
+
+A retry policy is not backpressure. Retries cope with a blip; under
+sustained overload they add load, then give up. The fix is the queue
+designed in ADR-0006, built in [ADR-0024](ADR-0024-queue-backpressure.md).

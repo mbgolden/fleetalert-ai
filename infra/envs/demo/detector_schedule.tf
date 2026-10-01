@@ -12,17 +12,11 @@ module "lambda_autonomous_detector" {
   timeout       = 30
   source_dir    = local.lambda_source_dir
 
-  environment = merge(local.common_environment, {
-    STATE_MACHINE_ARN = module.step_functions.state_machine_arn
-  })
+  environment = merge(local.common_environment, local.enqueue_environment)
 
   policy_statements = [
     local.dynamodb_read_write_statement,
-    {
-      effect    = "Allow"
-      actions   = ["states:StartExecution"]
-      resources = [module.step_functions.state_machine_arn]
-    },
+    local.enqueue_statement,
   ]
 
   tags = local.common_tags

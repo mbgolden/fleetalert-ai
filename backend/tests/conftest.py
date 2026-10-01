@@ -28,6 +28,8 @@ def fresh_aws_clients() -> Iterator[None]:
     test gets fresh ones so a moto context or a patched boto3 never leaks."""
     db.get_dynamodb_resource.cache_clear()
     workflow._stepfunctions.cache_clear()
+    workflow._sqs.cache_clear()
     yield
     db.get_dynamodb_resource.cache_clear()
     workflow._stepfunctions.cache_clear()
+    workflow._sqs.cache_clear()

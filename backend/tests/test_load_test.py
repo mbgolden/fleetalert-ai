@@ -153,8 +153,12 @@ def test_scans_follow_every_page() -> None:
 
 def test_handler_actions(dynamodb_tables: None, no_real_model: None, monkeypatch: pytest.MonkeyPatch) -> None:
     reseed_demo_data()
-    monkeypatch.setattr(load_test_handler, "start_investigation", _run_inline)
+    monkeypatch.setattr(load_test_handler, "enqueue_investigation", _run_inline)
     monkeypatch.setenv("AGENT_LOOP_FUNCTION_NAME", "fleetalert-ai-demo-agent-loop")
+    monkeypatch.setenv("WORKER_FUNCTION_NAME", "fleetalert-ai-demo-investigation-worker")
+    monkeypatch.setenv("API_FUNCTION_NAME", "fleetalert-ai-demo-api")
+    monkeypatch.setenv("INVESTIGATION_QUEUE_NAME", "fleetalert-ai-demo-investigations")
+    monkeypatch.setenv("INVESTIGATION_DLQ_NAME", "fleetalert-ai-demo-investigations-dlq")
     monkeypatch.setenv("STATE_MACHINE_ARN", "arn:aws:states:us-east-1:123456789012:stateMachine:demo")
 
     ran = load_test_handler.handler({"action": "run", "label": "h1", "rate_per_hour": 3600, "minutes": 2 / 60}, None)
@@ -163,7 +167,7 @@ def test_handler_actions(dynamodb_tables: None, no_real_model: None, monkeypatch
 
     assert ran["started"] == 2
     assert report["completed"] == 2
-    assert "aws" in report
+    assert report["aws"]["dead_letters"] == 0.0
     assert cleaned["deleted_alerts"] == 2
     with pytest.raises(ValueError):
         load_test_handler.handler({"action": "explode", "label": "h1"}, None)

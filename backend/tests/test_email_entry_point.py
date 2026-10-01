@@ -149,7 +149,7 @@ def test_confirmation_timeout_is_a_no_op_once_a_human_answered(dynamodb_tables: 
 def test_scheduled_trigger_handler_delivers(dynamodb_tables: None, monkeypatch: pytest.MonkeyPatch) -> None:
     reseed_demo_data()
     starts = _Starts()
-    monkeypatch.setattr(email_trigger_handler, "start_investigation", starts)
+    monkeypatch.setattr(email_trigger_handler, "enqueue_investigation", starts)
 
     result = email_trigger_handler.handler({}, None)
 
@@ -162,7 +162,7 @@ def test_scheduled_trigger_handler_delivers(dynamodb_tables: None, monkeypatch: 
 def test_email_route_starts_then_reports_busy(dynamodb_tables: None, monkeypatch: pytest.MonkeyPatch) -> None:
     reseed_demo_data()
     starts = _Starts()
-    monkeypatch.setattr(api_handler, "start_investigation", starts)
+    monkeypatch.setattr(api_handler, "enqueue_investigation", starts)
 
     first = api_handler.handler({"routeKey": "POST /demo/email"}, None)
     second = api_handler.handler({"routeKey": "POST /demo/email"}, None)

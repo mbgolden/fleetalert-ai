@@ -61,8 +61,24 @@ resource "aws_sfn_state_machine" "this" {
 
   definition = jsonencode({
     Comment = "FleetAlert AI investigation state machine"
-    StartAt = "RunInvestigation"
+    StartAt = "AlreadyInvestigated"
     States = {
+      # Queued investigations (docs/decisions/ADR-0024) are run by the queue
+      # worker, which starts this execution only when a proposal needs a
+      # human, passing the round's outcome in. Direct starts (the web UI)
+      # have no outcome yet and run the round here.
+      AlreadyInvestigated = {
+        Type = "Choice"
+        Choices = [
+          {
+            Variable  = "$.investigation"
+            IsPresent = true
+            Next      = "IsAwaitingConfirmation"
+          }
+        ]
+        Default = "RunInvestigation"
+      }
+
       RunInvestigation = {
         Type     = "Task"
         Resource = "arn:aws:states:::lambda:invoke"
