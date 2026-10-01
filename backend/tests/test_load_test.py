@@ -167,3 +167,48 @@ def test_handler_actions(dynamodb_tables: None, no_real_model: None, monkeypatch
     assert cleaned["deleted_alerts"] == 2
     with pytest.raises(ValueError):
         load_test_handler.handler({"action": "explode", "label": "h1"}, None)
+
+
+
+def test_a_label_can_only_run_once(dynamodb_tables: None) -> None:
+    """Generating load isn't idempotent; the first real run was retried by a
+    timed-out client and investigated every alert three times."""
+    starts: list[str] = []
+
+    def start(alert_id: str, _entry: str, _extra: dict[str, Any]) -> None:
+        starts.append(alert_id)
+
+    loadtest.run("once", rate_per_hour=3600, minutes=2 / 60, start=start, sleep=lambda _s: None)
+    with pytest.raises(ValueError, match="already run"):
+        loadtest.run("once", rate_per_hour=3600, minutes=2 / 60, start=start, sleep=lambda _s: None)
+
+    assert starts == ["LT-once-00000", "LT-once-00001"]
+    record = repositories.get_load_test_run("once")
+    assert record is not None and record["status"] == "done" and int(record["started"]) == 2
+
+
+def test_report_says_when_generation_is_finished(dynamodb_tables: None, no_real_model: None) -> None:
+    reseed_demo_data()
+    loadtest.run("gen", rate_per_hour=3600, minutes=1 / 60, start=_run_inline, sleep=lambda _s: None)
+
+    result = loadtest.report("gen")
+
+    assert result["generation"] == "done"
+    assert result["run"]["requested"] == 1
+
+
+def test_cleanup_all_removes_leftovers_from_every_run(dynamodb_tables: None, no_real_model: None) -> None:
+    reseed_demo_data()
+    for label in ("left1", "left2"):
+        loadtest.run(label, rate_per_hour=3600, minutes=1 / 60, start=_run_inline, sleep=lambda _s: None)
+
+    assert load_test_handler.handler({"action": "cleanup_all"}, None) == {"label": "all", "deleted_alerts": 2}
+    assert repositories.list_all_load_test_alerts() == []
+    assert len(repositories.list_alerts()) == 6  # the demo alerts are untouched
+
+
+def test_the_dynamodb_resource_is_reused() -> None:
+    """One resource, so one connection pool, per Lambda container."""
+    from fleetalert.db import get_dynamodb_resource
+
+    assert get_dynamodb_resource() is get_dynamodb_resource()

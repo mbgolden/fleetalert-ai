@@ -433,6 +433,33 @@ def _query_all(table: Any, **kwargs: Any) -> list[dict[str, Any]]:
 # --- Daily usage (fleetalert.budget) ---
 
 
+def put_load_test_run(label: str, record: dict[str, Any], *, if_new: bool = False) -> bool:
+    """A load-test run's status, kept beside the usage rows. With if_new,
+    refuses (returns False) if the label already has a record."""
+    kwargs: dict[str, Any] = {"Item": _dynamo_safe({"day": f"loadtest-run#{label}", **record})}
+    if if_new:
+        kwargs["ConditionExpression"] = "attribute_not_exists(#day)"
+        kwargs["ExpressionAttributeNames"] = {"#day": "day"}
+    try:
+        get_dynamodb_resource().Table(USAGE_TABLE).put_item(**kwargs)
+    except ClientError as exc:
+        if exc.response["Error"]["Code"] == "ConditionalCheckFailedException":
+            return False
+        raise
+    return True
+
+
+def get_load_test_run(label: str) -> dict[str, Any] | None:
+    resp = get_dynamodb_resource().Table(USAGE_TABLE).get_item(Key={"day": f"loadtest-run#{label}"})
+    item: dict[str, Any] | None = resp.get("Item")
+    return item
+
+
+def list_all_load_test_alerts() -> list[dict[str, Any]]:
+    table = get_dynamodb_resource().Table(ALERTS_TABLE)
+    return _scan_all(table, FilterExpression=Attr("load_test").exists())
+
+
 def get_usage(day: str) -> dict[str, Any]:
     resp = get_dynamodb_resource().Table(USAGE_TABLE).get_item(Key={"day": day})
     item: dict[str, Any] = resp.get("Item") or {"day": day}

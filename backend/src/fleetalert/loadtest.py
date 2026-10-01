@@ -117,8 +117,18 @@ def run(
     """Create LT- alerts and start their investigations, evenly paced."""
     if rate_per_hour <= 0 or not 0 < minutes <= MAX_MINUTES:
         raise ValueError(f"rate_per_hour must be > 0 and minutes in (0, {MAX_MINUTES}]")
-    prepare()
     total = max(1, round(rate_per_hour * minutes / 60))
+    # Generating load is not idempotent: a retried invocation would start
+    # every investigation again. The first load test did exactly that when
+    # a timed-out client retried it (ADR-0023). Claim the label first.
+    if not repositories.put_load_test_run(
+        label,
+        {"status": "running", "requested": total, "rate_per_hour": rate_per_hour, "minutes": minutes,
+         "started_at": datetime.now(UTC).isoformat(), "expires_at": int(time.time()) + 90 * 86400},
+        if_new=True,
+    ):
+        raise ValueError(f"Load-test label {label!r} has already run; refusing to start it twice")
+    prepare()
     interval = 3600 / rate_per_hour
     started, errors = 0, Counter[str]()
     t0 = clock()
@@ -147,7 +157,7 @@ def run(
         if delay > 0:
             sleep(delay)
     elapsed = clock() - t0
-    return {
+    summary = {
         "label": label,
         "rate_per_hour": rate_per_hour,
         "minutes": minutes,
@@ -157,6 +167,10 @@ def run(
         "elapsed_s": round(elapsed, 1),
         "achieved_rate_per_hour": round(started / elapsed * 3600) if elapsed > 0 else None,
     }
+    repositories.put_load_test_run(
+        label, {**summary, "status": "done", "expires_at": int(time.time()) + 90 * 86400}
+    )
+    return summary
 
 
 # --- Measuring ---------------------------------------------------------------
@@ -208,9 +222,17 @@ def report(label: str, *, cloudwatch: Callable[[str, str], dict[str, Any]] | Non
         last_done = max(last_done or str(root["timestamp"]), str(root["timestamp"]))
 
     completed = len(processing)
+    run_record = repositories.get_load_test_run(label) or {}
     window_s = _ms_between(first_start, last_done) / 1000 if first_start and last_done else None
     result: dict[str, Any] = {
         "label": label,
+        # "running" while the generator is still starting investigations.
+        "generation": str(run_record.get("status", "unknown")),
+        "run": {
+            k: (float(v) if hasattr(v, "is_finite") else v)
+            for k, v in run_record.items()
+            if k not in ("day", "expires_at", "status")
+        },
         "alerts": len(alerts),
         "completed": completed,
         "failed": failed,
@@ -257,10 +279,11 @@ def to_markdown(r: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def cleanup(label: str) -> dict[str, Any]:
-    """Delete one run's alerts and their traces."""
-    alerts = repositories.list_load_test_alerts(label)
+def cleanup(label: str | None = None) -> dict[str, Any]:
+    """Delete one run's alerts and traces, or (label None) every leftover
+    load-test alert, e.g. from a run that failed before cleaning up."""
+    alerts = repositories.list_load_test_alerts(label) if label else repositories.list_all_load_test_alerts()
     for alert in alerts:
         repositories.clear_spans_for_alert(str(alert["alert_id"]))
         repositories.delete_alert(str(alert["alert_id"]))
-    return {"label": label, "deleted_alerts": len(alerts)}
+    return {"label": label or "all", "deleted_alerts": len(alerts)}

@@ -36,6 +36,16 @@ module "lambda_load_test" {
   tags = local.common_tags
 }
 
+# The workflow starts the generator asynchronously (a long synchronous
+# invocation from CI lost its connection and was retried, re-running the
+# load). Lambda would also retry a failed async invocation twice by
+# default; generating load must happen at most once.
+resource "aws_lambda_function_event_invoke_config" "load_test" {
+  function_name                = module.lambda_load_test.function_name
+  maximum_retry_attempts       = 0
+  maximum_event_age_in_seconds = 60
+}
+
 output "load_test_function_name" {
   value = module.lambda_load_test.function_name
 }
