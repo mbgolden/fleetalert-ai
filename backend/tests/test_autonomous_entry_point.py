@@ -189,7 +189,7 @@ def test_the_model_gets_the_detector_finding_and_clean_readings(dynamodb_tables:
 def test_scheduled_handler_runs_the_detector(dynamodb_tables: None, monkeypatch: pytest.MonkeyPatch) -> None:
     reseed_demo_data()
     starts = _Starts()
-    monkeypatch.setattr(autonomous_detector_handler, "start_investigation", starts)
+    monkeypatch.setattr(autonomous_detector_handler, "enqueue_investigation", starts)
 
     result = autonomous_detector_handler.handler({}, None)
 
@@ -200,7 +200,7 @@ def test_scheduled_handler_runs_the_detector(dynamodb_tables: None, monkeypatch:
 def test_detect_route_starts_then_reports_busy(dynamodb_tables: None, monkeypatch: pytest.MonkeyPatch) -> None:
     reseed_demo_data()
     starts = _Starts()
-    monkeypatch.setattr(api_handler, "start_investigation", starts)
+    monkeypatch.setattr(api_handler, "enqueue_investigation", starts)
 
     first = api_handler.handler({"routeKey": "POST /demo/detect"}, None)
     second = api_handler.handler({"routeKey": "POST /demo/detect"}, None)

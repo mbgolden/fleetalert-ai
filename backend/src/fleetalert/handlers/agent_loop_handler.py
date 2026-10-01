@@ -38,6 +38,16 @@ def _get_anthropic_api_key() -> str:
 
 
 def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
+    return run_round(event)
+
+
+def run_round(event: dict[str, Any]) -> dict[str, Any]:
+    """One investigation round for {"alert_id", "entry_point", ...}.
+
+    Shared by this Step Functions task (direct starts and re-investigations
+    after a rejection) and the queue worker (investigation_worker_handler).
+    Marks the alert failed and re-raises on any error.
+    """
     alert_id = event["alert_id"]
     log = alert_logger(__name__, alert_id)
     log.info("RunInvestigation task invoked")
