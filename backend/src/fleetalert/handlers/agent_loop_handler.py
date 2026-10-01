@@ -46,7 +46,7 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         result = run_investigation(alert_id, client, entry_point=event.get("entry_point", "web"))
         log.info("RunInvestigation task complete: %s", result.get("outcome"))
         return result
-    except Exception:
+    except Exception as exc:
         # Best-effort marker for whichever attempt turns out to be the
         # last one Step Functions makes (see infra/modules/step_functions
         # -- retried up to 6 times before landing on the Failed state).
@@ -54,11 +54,11 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         # status back to "investigating" before this can matter; only the
         # final, un-retried failure leaves "failed" in place.
         log.exception("RunInvestigation task raised")
-        _mark_failed(alert_id)
+        _mark_failed(alert_id, exc)
         raise
 
 
-def _mark_failed(alert_id: str) -> None:
+def _mark_failed(alert_id: str, error: BaseException) -> None:
     try:
         repositories.update_alert(alert_id, status="failed")
         alert = repositories.get_alert(alert_id)
@@ -70,6 +70,9 @@ def _mark_failed(alert_id: str) -> None:
                 actor="system",
                 status=SpanStatus.FAILURE,
                 parent_span_id=tracer.root_span_id,
+                # The trace is what a visitor sees, so it should say what
+                # broke, not just that something did.
+                output={"error": f"{type(error).__name__}: {error}"[:500]},
             )
     except Exception:  # noqa: BLE001, S110 -- best-effort; must never mask the real error  # nosec B110
         pass
