@@ -150,3 +150,4 @@ A merge to main applies Terraform and deploys the frontend
 | [0020](docs/decisions/ADR-0020-autonomous-telemetry-detector.md) | An autonomous entry point: synthetic live telemetry and a rule-based detector |
 | [0021](docs/decisions/ADR-0021-migrate-to-sonnet-5-5.md) | Migrate the agent from Sonnet 5 to Sonnet 5.5, on eval evidence |
 | [0022](docs/decisions/ADR-0022-activity-feed-and-end-state-metric.md) | A cross-alert activity feed and an end-state metric |
+| [0023](docs/decisions/ADR-0023-load-testing-without-a-model.md) | Load testing the live pipeline, without calling a model |

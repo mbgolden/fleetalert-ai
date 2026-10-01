@@ -8,7 +8,7 @@ from typing import Any
 import anthropic
 import boto3
 
-from fleetalert import config, repositories
+from fleetalert import config, loadtest, repositories
 from fleetalert.agent.loop import run_investigation
 from fleetalert.logging_config import alert_logger, configure_logging
 from fleetalert.tracing import SpanKind, SpanStatus, Tracer
@@ -42,8 +42,18 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     log = alert_logger(__name__, alert_id)
     log.info("RunInvestigation task invoked")
     try:
-        client = anthropic.Anthropic(api_key=_get_anthropic_api_key())
-        result = run_investigation(alert_id, client, entry_point=event.get("entry_point", "web"))
+        if event.get("load_test"):
+            # Load tests (ADR-0023) run the real pipeline with a scripted
+            # model. Only for LT- alerts, so no other input can switch a
+            # real investigation onto the stub.
+            if not loadtest.is_load_test(alert_id):
+                raise ValueError(f"load_test is only allowed for {loadtest.LOAD_TEST_PREFIX} alerts")
+            result = run_investigation(
+                alert_id, loadtest.StubModelClient(), model=loadtest.STUB_MODEL, entry_point="loadtest"
+            )
+        else:
+            client = anthropic.Anthropic(api_key=_get_anthropic_api_key())
+            result = run_investigation(alert_id, client, entry_point=event.get("entry_point", "web"))
         log.info("RunInvestigation task complete: %s", result.get("outcome"))
         return result
     except Exception as exc:
