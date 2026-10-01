@@ -20,6 +20,10 @@ and the warning cleared. The symptom is gone for now, but the conceptual
 problem remains: the proposal UI still shows one "confidence" for two
 different questions. Lower priority, still worth doing.
 
+Update, 2026-10-01 00:11 recorded run: the warning came back in 2 of 3
+`compressor-no-kb` trials. The prompt line moved the average without fixing
+the underlying ambiguity, which is more evidence for the split.
+
 - Replace `confidence` on `propose_fix` with `diagnosis_confidence` (how
   sure the root cause is right) and `action_confidence` (how sure this fix
   is the right next step).
