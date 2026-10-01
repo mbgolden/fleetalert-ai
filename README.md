@@ -19,23 +19,25 @@ to bound cost and abuse on a public site.
 
 | | |
 |---|---|
-| **One engine, three entry points** | Three sources all start the same Step Functions investigation; only `entry_point` differs. They are the web UI, a simulated inbound email every 4 hours ([ADR-0016](docs/decisions/ADR-0016-simulated-email-entry-point.md)), and a rule-based detector watching live synthetic telemetry ([ADR-0020](docs/decisions/ADR-0020-autonomous-telemetry-detector.md)). The email and the detector each have a demo button too. |
+| **One engine, three entry points** | Three sources all run the same investigation round; only `entry_point` differs. They are the web UI, a simulated inbound email every 4 hours ([ADR-0016](docs/decisions/ADR-0016-simulated-email-entry-point.md)), and a rule-based detector watching live synthetic telemetry ([ADR-0020](docs/decisions/ADR-0020-autonomous-telemetry-detector.md)). The email and the detector each have a demo button too. |
 | **Capabilities Engine** | Every action is a registered capability with JSON-schema input and output contracts, a safety tier, an owner and a retry policy. The model only ever gets the `read_only` and `proposes_action` tiers, so `executes_action` is unreachable from anything it says. |
 | **Human in the loop, structurally** | A proposal pauses the state machine on a task-token wait. Only a human's Confirm resumes it, and the fix is re-checked (status, token, proposal, whitelist) before it runs. Unanswered proposals route to support after 2 hours. |
 | **Structured traces** | Every model call, capability call, guardrail decision and human action is a span with input, output, latency, status and cost. They're grouped one trace per round and shown live in the UI. |
 | **Evals** | Golden scenarios graded deterministically from the spans, 3 trials each against real Claude. They gate PRs that change agent behaviour, and recorded runs replay for free on every PR. The page linked above shows the results and what they caught. |
+| **Load tested, with backpressure** | The live pipeline was load-tested with a scripted model ([ADR-0023](docs/decisions/ADR-0023-load-testing-without-a-model.md)). At 7,200 investigations an hour it lost 16% of the work and took its own API down. Machine-generated alerts now go through an SQS queue and a concurrency-capped worker ([ADR-0024](docs/decisions/ADR-0024-queue-backpressure.md)). The same load passes through with an 84 ms median wait, and 36,000 an hour queues, drains in 2.4 minutes and loses nothing. |
 | **Observability and cost** | Every span also becomes a CloudWatch metric. A dashboard, four alarms, and a daily cost guard (50 rounds or $1.25 a day) sit in front of the Anthropic workspace limit. |
 
 ## How an investigation flows
 
 ```
-entry point (web click · inbound email · telemetry detector)
-  -> Step Functions: RunInvestigation (agent-loop Lambda)
+web click                        -> Step Functions: RunInvestigation
+inbound email · telemetry detector -> SQS queue -> worker Lambda (max 50 at once, dead-letter queue after 3 tries)
+  -> the investigation round (same code on both paths)
        -> daily budget reserved (or refused before any model call)
        -> Claude tool loop (max 6 iterations), every call through the Capabilities Engine:
             get_telemetry_snapshot · search_knowledge_base · get_service_history · propose_fix
        -> guardrails: truncated output? previously rejected? whitelisted?
-  -> WaitForConfirmation (task token, 2 h timeout)
+  -> Step Functions: WaitForConfirmation (task token, 2 h timeout)
        Confirm -> ExecuteFix (re-checks everything) -> resolved
        Reject  -> one knowledge-base-backed re-investigation, then route to support
        Timeout -> route to support
@@ -66,20 +68,41 @@ Each one has a decision record in [`docs/decisions/`](docs/decisions/):
    ([ADR-0017](docs/decisions/ADR-0017-span-metrics-and-daily-cost-guard.md)).
 8. **An append-only trace of everything.** The only deletion is the demo
    reset ([ADR-0015](docs/decisions/ADR-0015-demo-reset-deletes-spans.md)).
+9. **A burst of alerts waits in a queue.** It can't starve the API or lose
+   work ([ADR-0024](docs/decisions/ADR-0024-queue-backpressure.md)).
+
+## Load test results
+
+A "Load test" workflow pushes throwaway alerts through the deployed
+pipeline at a set rate. Only the model is swapped for a script that takes
+2 s per call, so a round holds a Lambda for about 6.4 s, like a real one.
+Reports are in [`docs/load-tests/`](docs/load-tests/).
+
+| 7,200 investigations/hour for 5 min | Completed | Lost | Median wait for a worker | Public API |
+|---|---|---|---|---|
+| Direct into Step Functions, account limit 10 | 502 of 600 | 98 (16%) | n/a | down for about 6 min |
+| Through the queue, worker cap 6 | 600 of 600 | 0 | 4.6 min | healthy |
+| Through the queue, account limit 1,000, cap 50 | 600 of 600 | 0 | 84 ms | healthy |
+
+At 36,000 an hour, above the ceiling of about 24,400, the backlog peaked
+at 865 and drained 2.4 minutes after the burst. All 3,000 completed. The
+test also found a client retry that re-ran the whole load three times, and
+a new connection on every DynamoDB call that made each round over five
+times slower than it needed to be. Both are in ADR-0023.
 
 ## Stack
 
 | Layer | Choice |
 |---|---|
 | Agent | Python 3.12, Claude API (Anthropic SDK), tool use |
-| Compute and orchestration | AWS Lambda, Step Functions (task-token callback), EventBridge schedules |
+| Compute and orchestration | AWS Lambda, Step Functions (task-token callback), SQS with a dead-letter queue, EventBridge schedules |
 | API | API Gateway HTTP API |
 | Data | DynamoDB (alerts, machines, telemetry, knowledge base, traces, usage) |
 | Frontend | React + TypeScript (Vite) on S3 + CloudFront, at a custom domain |
 | Observability | CloudWatch Embedded Metric Format, dashboard, alarms, SNS |
 | IaC | Terraform, remote state in S3 with DynamoDB locking |
 | CI/CD | GitHub Actions with OIDC (no long-lived AWS keys): plan on PR, apply and deploy on merge |
-| Quality | pytest + moto, ruff, mypy (strict), bandit, a capability-coverage gate, live and replay evals |
+| Quality | pytest + moto, ruff, mypy (strict), bandit, a capability-coverage gate, live and replay evals, a load-test workflow |
 
 ## Repo layout
 
@@ -91,6 +114,7 @@ frontend/                 alert list, live trace viewer, confirm/reject, inbound
 infra/                    Terraform modules and the single demo environment
 docs/decisions/           ADR log (why things are the way they are)
 docs/capabilities/        one contract doc per capability
+docs/load-tests/          one recorded report per load-test level
 docs/BACKLOG.md           known follow-ups, with the evidence that raised them
 ```
 
@@ -133,7 +157,7 @@ A merge to main applies Terraform and deploys the frontend
 | [0003](docs/decisions/ADR-0003-preseeded-demo-no-freetext.md) | Pre-seeded demo scenarios instead of free-text input |
 | [0004](docs/decisions/ADR-0004-github-oidc-sub-claim-immutable-ids.md) | GitHub OIDC trust policy broke against immutable-ID `sub` claims |
 | [0005](docs/decisions/ADR-0005-terraform-apply-via-gated-github-environment.md) | Terraform apply through a gated GitHub environment (superseded) |
-| [0006](docs/decisions/ADR-0006-defer-backpressure-until-real-feed.md) | Defer backpressure between alert intake and investigation |
+| [0006](docs/decisions/ADR-0006-defer-backpressure-until-real-feed.md) | Defer backpressure between alert intake and investigation (superseded by 0024) |
 | [0007](docs/decisions/ADR-0007-defer-cors-until-final-domains.md) | Defer CORS configuration until final domains are known |
 | [0008](docs/decisions/ADR-0008-defer-claude-api-retry-backoff.md) | Defer explicit retry/backoff around the Claude API call |
 | [0009](docs/decisions/ADR-0009-custom-domain-two-phase-acm.md) | Custom frontend domain via a two-phase ACM apply |
