@@ -150,6 +150,10 @@ def _slot(now: datetime, rotation: tuple[str, ...], period: timedelta) -> str:
     return rotation[int(now.timestamp() // period.total_seconds()) % len(rotation)]
 
 
+def _monitored_machine() -> dict[str, Any]:
+    return next(m for m in seed_data.SEED_MACHINES if m["machine_id"] == MONITORED_MACHINE_ID)
+
+
 def _initial_alert() -> dict[str, Any]:
     return {
         "alert_id": AUTONOMOUS_ALERT_ID,
@@ -192,6 +196,10 @@ def run_detector(
             if trigger == "button"
             else _slot(now, SCHEDULE_ROTATION, timedelta(hours=4))
         )
+    # The detector owns its truck, so it makes sure the truck exists rather
+    # than relying on demo seeding having run since the truck was added
+    # (the first live run failed on exactly that). Idempotent put.
+    repositories.put_machine(_monitored_machine())
     readings = generate_telemetry(profile, now)
     # The truck is the detector's alone; replacing its readings keeps two
     # runs a few minutes apart from interleaving two different stories.

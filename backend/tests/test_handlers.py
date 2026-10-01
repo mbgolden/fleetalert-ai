@@ -117,6 +117,23 @@ def test_execute_fix_handler_marks_alert_failed_on_other_errors(
     last_action = last_event("ALERT-2C")
     assert last_action["action"] == "execution_failed"
     assert last_action["status"] == "failure"
+    assert last_action["details"]["error"] == "RuntimeError: DynamoDB unavailable"
+
+
+def test_agent_loop_failure_span_says_what_broke(
+    dynamodb_tables: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from fleetalert.handlers import agent_loop_handler as module
+
+    _seed_alert("ALERT-2D", machine_id="M-9999")  # a machine that doesn't exist
+    monkeypatch.setattr(module, "_get_anthropic_api_key", lambda: "test-key")
+
+    with pytest.raises(ValueError):
+        module.handler({"alert_id": "ALERT-2D"}, None)
+
+    last_action = last_event("ALERT-2D")
+    assert last_action["action"] == "execution_failed"
+    assert last_action["details"]["error"] == "ValueError: No such machine: M-9999"
 
 
 def test_agent_loop_handler_fetches_secret_and_runs_investigation(

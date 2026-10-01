@@ -216,3 +216,17 @@ def test_detect_route_starts_then_reports_busy(dynamodb_tables: None, monkeypatc
     body = json.loads(status["body"])
     assert body["source"] == "autonomous"
     assert body["detection"]["rule"]
+
+
+def test_the_detector_creates_its_truck_if_seeding_never_ran(dynamodb_tables: None) -> None:
+    """The first live run failed: the truck was added to the seed data, but
+    the live machines table hadn't been reseeded since. The detector now
+    owns its truck."""
+    from fleetalert.repositories import get_machine
+
+    assert get_machine(MONITORED_MACHINE_ID) is None  # fresh tables, nothing seeded
+
+    run_detector(_Starts(), trigger="button", profile="sensor_glitch", now=NOW)
+
+    machine = get_machine(MONITORED_MACHINE_ID)
+    assert machine is not None and machine["name"] == "Truck 31 - Engine"

@@ -33,16 +33,16 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         log.warning("ExecuteFix refused by a guardrail")
         _mark_failed(alert_id, refused=True)
         raise
-    except Exception:
+    except Exception as exc:
         # See agent_loop_handler._mark_failed -- same best-effort pattern,
         # for the same Retry/Catch structure on this task in the state
         # machine.
         log.exception("ExecuteFix task raised")
-        _mark_failed(alert_id)
+        _mark_failed(alert_id, error=exc)
         raise
 
 
-def _mark_failed(alert_id: str, *, refused: bool = False) -> None:
+def _mark_failed(alert_id: str, *, refused: bool = False, error: BaseException | None = None) -> None:
     try:
         repositories.update_alert(alert_id, status="failed")
         alert = repositories.get_alert(alert_id)
@@ -54,6 +54,7 @@ def _mark_failed(alert_id: str, *, refused: bool = False) -> None:
                 actor="system",
                 status=SpanStatus.DENIED if refused else SpanStatus.FAILURE,
                 parent_span_id=tracer.root_span_id,
+                output={"error": f"{type(error).__name__}: {error}"[:500]} if error else {},
             )
     except Exception:  # noqa: BLE001, S110 -- best-effort; must never mask the real error  # nosec B110
         pass

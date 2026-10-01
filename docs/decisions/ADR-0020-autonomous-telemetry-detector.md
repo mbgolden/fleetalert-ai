@@ -69,3 +69,21 @@ Two things were worth keeping in mind:
   `detect()`.
 - Reset Alerts doesn't touch ALERT-1007 or the truck's readings. They're
   live data, not seed data, and the next run replaces them anyway.
+
+## First live run (2026-10-01 01:34)
+The first press of the button raised ALERT-1007 correctly. The
+investigation then failed six times, on "No such machine: M-1004", and
+ended `failed`. No model call was made, so it cost nothing. Truck 31 had
+been added to the seed data, but seed data only reaches the live tables
+through Reset Alerts or the seed workflow, and neither had run since the
+deploy. The tests never caught it because every test seeds its tables
+first.
+
+There were two fixes:
+- **The detector owns its truck.** It writes the truck to the machines
+  table on every run (an idempotent put), and a test proves it works
+  against unseeded tables.
+- **A failure span now records the error type and message.** The five
+  failure spans on ALERT-1007 were blank, so the trace couldn't say what
+  had broken.
+
