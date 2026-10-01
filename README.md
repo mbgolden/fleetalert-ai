@@ -148,3 +148,4 @@ A merge to main applies Terraform and deploys the frontend
 | [0018](docs/decisions/ADR-0018-guardrail-refusals-are-not-retried.md) | Guardrail refusals are not retried |
 | [0019](docs/decisions/ADR-0019-publish-eval-results-on-the-demo.md) | Publish eval results on the demo site |
 | [0020](docs/decisions/ADR-0020-autonomous-telemetry-detector.md) | An autonomous entry point: synthetic live telemetry and a rule-based detector |
+| [0021](docs/decisions/ADR-0021-migrate-to-sonnet-5-5.md) | Migrate the agent from Sonnet 5 to Sonnet 5.5, on eval evidence |

@@ -44,7 +44,7 @@ module "lambda_agent_loop" {
 
   environment = merge(local.common_environment, {
     ANTHROPIC_SECRET_ARN = aws_secretsmanager_secret.anthropic_api_key.arn
-    FLEETALERT_MODEL     = "claude-sonnet-5"
+    FLEETALERT_MODEL     = "claude-sonnet-5-5" # ADR-0021
   })
 
   policy_statements = [

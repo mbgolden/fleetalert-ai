@@ -611,3 +611,18 @@ def test_tool_calls_cut_off_at_max_tokens_are_never_run(dynamodb_tables: None) -
     names = event_names("ALERT-T")
     assert "guardrail.truncated_output" in names
     assert names.count("propose_fix") == 1  # only the complete call ran
+
+
+def test_a_refusal_routes_to_support_instead_of_nudging(dynamodb_tables: None) -> None:
+    """Sonnet 5.5's migration checklist: handle stop_reason "refusal"
+    before reading content. Nudging a refusal would just repeat it."""
+    _seed(alert_id="ALERT-R", machine_id="M-1002", alert_type="temperature_drift")
+    refused = response(text_block(""))
+    refused.stop_reason = "refusal"
+    client = FakeAnthropicClient([refused])
+
+    result = run_investigation("ALERT-R", client)
+
+    assert result == {"outcome": "routed_to_support", "alert_id": "ALERT-R", "reason": "model_refused"}
+    assert len(client.messages.calls) == 1
+    assert last_event("ALERT-R")["details"]["reason"] == "model_refused"

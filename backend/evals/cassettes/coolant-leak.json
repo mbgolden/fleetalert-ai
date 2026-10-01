@@ -1,17 +1,17 @@
 {
   "scenario_id": "coolant-leak",
-  "model": "claude-sonnet-5",
-  "recorded_at": "2026-10-01T00:12:06+00:00",
+  "model": "claude-sonnet-5-5",
+  "recorded_at": "2026-10-01T02:17:05+00:00",
   "rounds": [
     {
-      "fingerprint": "ca6f6407db476efd",
+      "fingerprint": "38c9622a122592e3",
       "responses": [
         {
           "stop_reason": "tool_use",
           "content": [
             {
               "type": "tool_use",
-              "id": "toolu_01GNBvwN7FqvNdZvMHQctAcN",
+              "id": "toolu_01BgAKcfjT35X9KAFAVxxBp4",
               "name": "get_telemetry_snapshot",
               "input": {
                 "window_minutes": 60
@@ -19,22 +19,22 @@
             },
             {
               "type": "tool_use",
-              "id": "toolu_014GMGeJjJ1zYYCkdgMvyo7w",
+              "id": "toolu_01EUFF7DNGBTybDjSFnHVvFw",
               "name": "search_knowledge_base",
               "input": {
-                "symptom_description": "coolant_temp_spike on diesel engine"
+                "symptom_description": "coolant temperature spike"
               }
             },
             {
               "type": "tool_use",
-              "id": "toolu_01XpEBo2SgwZC7DqYDmxJgCD",
+              "id": "toolu_01B9W5Yczts1awj8nAw67MQC",
               "name": "get_service_history",
               "input": {}
             }
           ],
           "usage": {
-            "input_tokens": 1493,
-            "output_tokens": 182,
+            "input_tokens": 1427,
+            "output_tokens": 144,
             "cache_creation_input_tokens": 0,
             "cache_read_input_tokens": 0
           }
@@ -43,23 +43,19 @@
           "stop_reason": "tool_use",
           "content": [
             {
-              "type": "text",
-              "text": "Investigation findings:\n\n- **Telemetry (60-min window):** Coolant temp rose steadily and sustained from 90\u00b0C \u2192 114\u00b0C over ~2 hours, while coolant level dropped correspondingly from 96% \u2192 76%. This is a continuous, correlated trend, not a transient blip. Oil pressure and RPM stayed stable/normal throughout, ruling out broader engine failure.\n- **Knowledge base:** Two conflicting entries were found:\n  - KB-001: transient sensor spike with no real temp rise \u2192 fix = restart_sensor\n  - KB-002: sustained spike correlated with low coolant level \u2192 genuine leak/coolant loss \u2192 fix = schedule_service_visit\n- **Service history:** Last coolant system service was over 3 months ago (routine flush), no recent related work.\n\nThe telemetry clearly matches KB-002's pattern (sustained rise + correlated coolant level drop) rather than KB-001's (transient, no real change). This strongly suggests an actual coolant loss/leak rather than a sensor glitch."
-            },
-            {
               "type": "tool_use",
-              "id": "toolu_01TfQnZ8M62vmG7vvEne5dgz",
+              "id": "toolu_01JzsMxy4RDC6AYKYhdYeGu5",
               "name": "propose_fix",
               "input": {
                 "fix_id": "schedule_service_visit",
-                "confidence": 0.85,
-                "description": "Two KB entries conflict: KB-001 attributes coolant_temp_spike to a transient sensor glitch (fix: restart_sensor), while KB-002 attributes a sustained spike correlated with falling coolant level to a genuine leak (fix: schedule_service_visit). Telemetry shows a steady, sustained rise from 90\u00b0C to 114\u00b0C over ~2 hours with coolant level dropping in lockstep from 96% to 76% -- not a transient blip -- matching KB-002's pattern rather than KB-001's. Oil pressure and RPM remained stable, so this appears isolated to coolant loss rather than a broader failure. Last service was a routine flush 3+ months ago with no related recent work, supporting physical inspection now."
+                "confidence": 0.92,
+                "description": "KB entries disagree: KB-001 says a transient sensor glitch (restart_sensor), KB-002 says a sustained spike with low coolant level means a real leak (schedule_service_visit). Telemetry supports KB-002. Coolant temp rose from ~89C to 114C and stayed high. Coolant level fell from 96% to 76% over the same period, while oil pressure (~44 psi) and rpm were stable. The spike is sustained and tracks real coolant loss, so it is not a sensor glitch. The last service was a coolant flush on 2026-06-02. A physical inspection for a leak is needed, and the truck should not be run hot in the meantime."
               }
             }
           ],
           "usage": {
-            "input_tokens": 3381,
-            "output_tokens": 697,
+            "input_tokens": 3277,
+            "output_tokens": 323,
             "cache_creation_input_tokens": 0,
             "cache_read_input_tokens": 0
           }

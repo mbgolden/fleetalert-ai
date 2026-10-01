@@ -1,17 +1,17 @@
 {
   "scenario_id": "oil-pressure",
-  "model": "claude-sonnet-5",
-  "recorded_at": "2026-10-01T00:13:02+00:00",
+  "model": "claude-sonnet-5-5",
+  "recorded_at": "2026-10-01T02:17:36+00:00",
   "rounds": [
     {
-      "fingerprint": "95af2ac59c61929b",
+      "fingerprint": "7b3c8a6cbdaa7c28",
       "responses": [
         {
           "stop_reason": "tool_use",
           "content": [
             {
               "type": "tool_use",
-              "id": "toolu_01DqMVEjMf1TqUK7yKMe89bm",
+              "id": "toolu_01HRJCgM1C8SbdZXT2F6pMwH",
               "name": "get_telemetry_snapshot",
               "input": {
                 "window_minutes": 60
@@ -19,7 +19,7 @@
             },
             {
               "type": "tool_use",
-              "id": "toolu_01JnwLw3UZsmPT8DhVtdmgah",
+              "id": "toolu_01QtqMd7hhW6ZXwhm8WqLQHR",
               "name": "search_knowledge_base",
               "input": {
                 "symptom_description": "oil pressure warning"
@@ -27,14 +27,14 @@
             },
             {
               "type": "tool_use",
-              "id": "toolu_01KpB8HiCtGhUmrdEJAXjAjy",
+              "id": "toolu_016rgmoCNiAGy1eoEMjfU6h8",
               "name": "get_service_history",
               "input": {}
             }
           ],
           "usage": {
-            "input_tokens": 1493,
-            "output_tokens": 155,
+            "input_tokens": 1427,
+            "output_tokens": 143,
             "cache_creation_input_tokens": 0,
             "cache_read_input_tokens": 0
           }
@@ -44,18 +44,18 @@
           "content": [
             {
               "type": "tool_use",
-              "id": "toolu_01NWH7gfcey9JZPSgBMwHEg1",
+              "id": "toolu_012mnMbBwGBc8ZWWqU2YPSE4",
               "name": "propose_fix",
               "input": {
                 "fix_id": "schedule_service_visit",
                 "confidence": 0.85,
-                "description": "Telemetry shows oil pressure steadily declining from 35.7 psi to ~18-19 psi over ~90 minutes while RPM (1600-1700), coolant temp (~88-90\u00b0C), and coolant level (96%) remained stable and normal \u2014 indicating a genuine progressive oil pressure loss rather than a sensor glitch or thermal/load artifact. KB-004 (the only matching entry) describes this exact pattern as \"low oil pressure warning, not resolved by sensor restart,\" with known fix schedule_service_visit; no conflicting KB entries were found. Service history shows the oil pressure sensor was already replaced in March for an unrelated fault, making a recurring sensor fault less likely as the primary cause. Given the sustained, stabilized low reading and the KB guidance, a service visit to inspect the oil pump/lines/filter is recommended rather than a sensor restart."
+                "description": "Oil pressure fell steadily from 35.7 to ~18.5 psi over about 70 minutes, then plateaued at 18-19 psi, while RPM (~1600-1700), coolant temp (~89C) and coolant level (96%) stayed normal. This looks like a real pressure loss, not a sensor glitch. The sensor was also replaced in March 2026, so a sensor fault is less likely. KB-004 is the only match (low oil pressure, not resolved by sensor restart) and its fix is schedule_service_visit. No conflicting KB entries."
               }
             }
           ],
           "usage": {
-            "input_tokens": 3192,
-            "output_tokens": 557,
+            "input_tokens": 3114,
+            "output_tokens": 290,
             "cache_creation_input_tokens": 0,
             "cache_read_input_tokens": 0
           }

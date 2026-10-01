@@ -19,9 +19,15 @@ on:
   workflow_dispatch:
     inputs:
       model:
-        description: Model to evaluate (blank = the deployed default)
-        required: false
-        default: ""
+        # A dropdown, not free text: a blank text box silently re-ran the
+        # default model once, when a 5.5 comparison was intended.
+        description: Model to evaluate
+        type: choice
+        options:
+          - deployed default
+          - claude-sonnet-5
+          - claude-sonnet-5-5
+        default: deployed default
       trials:
         description: Trials per scenario (1-5)
         required: false
@@ -46,7 +52,7 @@ jobs:
         working-directory: backend
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      FLEETALERT_MODEL: ${{ inputs.model }}
+      FLEETALERT_MODEL: ${{ inputs.model != 'deployed default' && inputs.model || '' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -82,6 +88,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "Nothing recorded."
           else
-            git commit -m "Record live eval results (${{ inputs.model || 'default model' }})"
+            model=$(python3 -c "import json; print(json.load(open('eval-results.json'))['model'])")
+            git commit -m "Record live eval results ($model)"
             git push
           fi

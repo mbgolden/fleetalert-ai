@@ -1,0 +1,1787 @@
+{
+  "tier": "live",
+  "model": "claude-sonnet-5",
+  "started_at": "2026-10-01T01:46:59+00:00",
+  "overall_pass_rate": 1.0,
+  "total_cost_usd": 0.6757,
+  "gate": {
+    "min_scenario_pass_rate": 0.6667,
+    "min_overall_pass_rate": 0.8,
+    "failures": []
+  },
+  "scenarios": {
+    "coolant-leak": {
+      "alert_id": "ALERT-1001",
+      "pass_rate": 1.0,
+      "trials": [
+        {
+          "passed": true,
+          "stale": false,
+          "outcomes": [
+            "schedule_service_visit"
+          ],
+          "error": null,
+          "cost_usd": 0.0169,
+          "model_calls": 2,
+          "input_tokens": 4875,
+          "output_tokens": 715,
+          "latency_ms": 7974.2,
+          "grades": [
+            {
+              "name": "round 1: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got schedule_service_visit; expected schedule_service_visit"
+            },
+            {
+              "name": "round 1: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "acknowledged the KB conflict",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale cites evidence",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale free of tool-call markup",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no denied capability calls",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no tool input errors",
+              "passed": true,
+              "gating": false,
+              "detail": ""
+            },
+            {
+              "name": "cost <= $0.15/round",
+              "passed": true,
+              "gating": true,
+              "detail": "worst round $0.0169"
+            }
+          ],
+          "proposals": [
+            {
+              "round": 1,
+              "fix_id": "schedule_service_visit",
+              "confidence": 0.85,
+              "description": "KB-001 and KB-002 disagree: KB-001 attributes coolant spikes to a transient sensor glitch (no real temp rise), while KB-002 attributes sustained spikes with falling coolant level to an actual leak requiring service. Telemetry shows coolant_temp_c climbing steadily from 90\u00b0C to 114\u00b0C over 60 minutes while coolant_level_pct dropped in parallel from 96% to 76% -- a strong, monotonic correlation, not a transient blip. This matches KB-002's pattern, not KB-001's. Oil pressure and RPM remained stable, so this appears isolated to coolant loss. Recommend scheduling a physical service visit to inspect for a coolant leak rather than restarting the sensor."
+            }
+          ]
+        },
+        {
+          "passed": true,
+          "stale": false,
+          "outcomes": [
+            "schedule_service_visit"
+          ],
+          "error": null,
+          "cost_usd": 0.01814,
+          "model_calls": 2,
+          "input_tokens": 4850,
+          "output_tokens": 844,
+          "latency_ms": 10461.5,
+          "grades": [
+            {
+              "name": "round 1: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got schedule_service_visit; expected schedule_service_visit"
+            },
+            {
+              "name": "round 1: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "acknowledged the KB conflict",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale cites evidence",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale free of tool-call markup",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no denied capability calls",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no tool input errors",
+              "passed": true,
+              "gating": false,
+              "detail": ""
+            },
+            {
+              "name": "cost <= $0.15/round",
+              "passed": true,
+              "gating": true,
+              "detail": "worst round $0.0181"
+            }
+          ],
+          "proposals": [
+            {
+              "round": 1,
+              "fix_id": "schedule_service_visit",
+              "confidence": 0.85,
+              "description": "Telemetry shows a sustained coolant temp rise from 89\u00b0C to 114\u00b0C over 90 minutes, tightly correlated with coolant level dropping from 96% to 76% \u2014 consistent with KB-002 (sustained spike + low coolant level = genuine leak, requires physical inspection), not KB-001 (transient sensor glitch with no real temp rise, fix via sensor restart). These two KB entries disagree, but the data clearly favors KB-002 since the rise is progressive/sustained rather than a brief transient, and is accompanied by real coolant loss. Oil pressure and RPM remain normal, ruling out other engine faults. Recommend scheduling a service visit to inspect for a coolant leak."
+            }
+          ]
+        },
+        {
+          "passed": true,
+          "stale": false,
+          "outcomes": [
+            "schedule_service_visit"
+          ],
+          "error": null,
+          "cost_usd": 0.01828,
+          "model_calls": 2,
+          "input_tokens": 4850,
+          "output_tokens": 858,
+          "latency_ms": 10367.3,
+          "grades": [
+            {
+              "name": "round 1: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got schedule_service_visit; expected schedule_service_visit"
+            },
+            {
+              "name": "round 1: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "acknowledged the KB conflict",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale cites evidence",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale free of tool-call markup",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no denied capability calls",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no tool input errors",
+              "passed": true,
+              "gating": false,
+              "detail": ""
+            },
+            {
+              "name": "cost <= $0.15/round",
+              "passed": true,
+              "gating": true,
+              "detail": "worst round $0.0183"
+            }
+          ],
+          "proposals": [
+            {
+              "round": 1,
+              "fix_id": "schedule_service_visit",
+              "confidence": 0.85,
+              "description": "Telemetry shows a sustained, steadily progressing coolant temp rise (90\u00b0C to 114\u00b0C over 2 hours) tightly correlated with a continuous coolant level drop (96% to 76%), while oil pressure and RPM stayed normal. KB-001 and KB-002 disagree: KB-001 attributes spikes to a transient sensor glitch (restart_sensor), KB-002 attributes sustained spikes correlated with low coolant level to a genuine leak (schedule_service_visit). The observed data matches KB-002's conditions (sustained trend + correlated coolant loss, not a transient blip), so a physical inspection for a coolant leak is recommended rather than a sensor restart."
+            }
+          ]
+        }
+      ]
+    },
+    "cabin-drift": {
+      "alert_id": "ALERT-1002",
+      "pass_rate": 1.0,
+      "trials": [
+        {
+          "passed": true,
+          "stale": false,
+          "outcomes": [
+            "send_diagnostic_reset"
+          ],
+          "error": null,
+          "cost_usd": 0.025822,
+          "model_calls": 2,
+          "input_tokens": 6291,
+          "output_tokens": 1324,
+          "latency_ms": 12569.0,
+          "grades": [
+            {
+              "name": "round 1: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got send_diagnostic_reset; expected send_diagnostic_reset"
+            },
+            {
+              "name": "round 1: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "rationale cites evidence",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale free of tool-call markup",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no denied capability calls",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no tool input errors",
+              "passed": true,
+              "gating": false,
+              "detail": ""
+            },
+            {
+              "name": "cost <= $0.15/round",
+              "passed": true,
+              "gating": true,
+              "detail": "worst round $0.0258"
+            }
+          ],
+          "proposals": [
+            {
+              "round": 1,
+              "fix_id": "send_diagnostic_reset",
+              "confidence": 0.78,
+              "description": "Telemetry shows cabin_temp_c climbing steadily from 2.0\u00b0C to 5.6\u00b0C over 2 hours while controller_reading_c stayed flat at ~1.8-2.2\u00b0C (setpoint 2\u00b0C), and compressor current fell from 11.5A to ~8.2A as the controller throttled back cooling believing setpoint was met. KB-003 (refrigeration_unit, temperature drift) describes two possible scenarios: (1) controller's own reading stays at setpoint while cabin drifts above it -> sensor calibration drift causing under-cooling, fixed by diagnostic reset/self-calibration; (2) controller reading tracks the cabin probe upward together -> refrigeration circuit fault needing a technician. Observed telemetry matches scenario (1) clearly, since controller_reading_c never tracks the rising cabin_temp_c. No service history exists to suggest a chronic mechanical issue. Recommending diagnostic reset to re-run controller self-calibration."
+            }
+          ]
+        },
+        {
+          "passed": true,
+          "stale": false,
+          "outcomes": [
+            "send_diagnostic_reset"
+          ],
+          "error": null,
+          "cost_usd": 0.017556,
+          "model_calls": 2,
+          "input_tokens": 4948,
+          "output_tokens": 766,
+          "latency_ms": 7835.3,
+          "grades": [
+            {
+              "name": "round 1: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got send_diagnostic_reset; expected send_diagnostic_reset"
+            },
+            {
+              "name": "round 1: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "rationale cites evidence",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale free of tool-call markup",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no denied capability calls",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no tool input errors",
+              "passed": true,
+              "gating": false,
+              "detail": ""
+            },
+            {
+              "name": "cost <= $0.15/round",
+              "passed": true,
+              "gating": true,
+              "detail": "worst round $0.0176"
+            }
+          ],
+          "proposals": [
+            {
+              "round": 1,
+              "fix_id": "send_diagnostic_reset",
+              "confidence": 0.82,
+              "description": "Telemetry shows cabin_temp_c climbing steadily from 3.6\u00b0C to 5.4\u00b0C over 60 minutes while controller_reading_c stays flat near the 2\u00b0C setpoint (1.8-2.2\u00b0C) the whole time, with compressor still running (current slowly tapering 10.3A\u21928.7A, consistent with the controller believing it's at setpoint and throttling back). KB-003 describes exactly this pattern -- controller's own return-air reading tracks setpoint while actual cabin temp drifts above it -- indicating the controller sensor calibration has drifted and is under-cooling; KB-003 recommends a diagnostic reset to re-run controller self-calibration. Note KB-003 also contains a conflicting case (controller reading tracking the cabin probe, pointing to a refrigeration circuit fault needing a technician), but that condition does not hold here since the two readings have clearly diverged. No prior service history exists for this unit to corroborate either way, so confidence is good but not maximal."
+            }
+          ]
+        },
+        {
+          "passed": true,
+          "stale": false,
+          "outcomes": [
+            "send_diagnostic_reset"
+          ],
+          "error": null,
+          "cost_usd": 0.024094,
+          "model_calls": 2,
+          "input_tokens": 7607,
+          "output_tokens": 888,
+          "latency_ms": 9652.2,
+          "grades": [
+            {
+              "name": "round 1: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got send_diagnostic_reset; expected send_diagnostic_reset"
+            },
+            {
+              "name": "round 1: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "rationale cites evidence",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale free of tool-call markup",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no denied capability calls",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no tool input errors",
+              "passed": true,
+              "gating": false,
+              "detail": ""
+            },
+            {
+              "name": "cost <= $0.15/round",
+              "passed": true,
+              "gating": true,
+              "detail": "worst round $0.0241"
+            }
+          ],
+          "proposals": [
+            {
+              "round": 1,
+              "fix_id": "send_diagnostic_reset",
+              "confidence": 0.85,
+              "description": "Telemetry shows cabin_temp_c climbing steadily from 1.8\u00b0C to 5.8\u00b0C over ~3 hours while controller_reading_c stays flat at ~1.8-2.2\u00b0C (tracking setpoint of 2\u00b0C) and compressor_current_a falls from ~11.5A to ~8.5A as the controller \"believes\" it's at setpoint and throttles cooling. KB-003 describes exactly this pattern (cabin drifts above setpoint while controller's own reading stays at setpoint) as controller sensor calibration drift, fixed via send_diagnostic_reset; the alternate scenario in the same KB entry (controller reading tracking the cabin probe, requiring a technician) does not match since the two readings clearly diverge here. No conflicting KB entries were found, and service history is empty, so this is the only documented path. Confidence is fairly high given the clean divergence pattern, but not maximal since this is a remote inference without physical inspection."
+            }
+          ]
+        }
+      ]
+    },
+    "oil-pressure": {
+      "alert_id": "ALERT-1003",
+      "pass_rate": 1.0,
+      "trials": [
+        {
+          "passed": true,
+          "stale": false,
+          "outcomes": [
+            "schedule_service_visit"
+          ],
+          "error": null,
+          "cost_usd": 0.022742,
+          "model_calls": 2,
+          "input_tokens": 4691,
+          "output_tokens": 1336,
+          "latency_ms": 14428.0,
+          "grades": [
+            {
+              "name": "round 1: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got schedule_service_visit; expected schedule_service_visit"
+            },
+            {
+              "name": "round 1: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "rationale cites evidence",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale free of tool-call markup",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no denied capability calls",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no tool input errors",
+              "passed": true,
+              "gating": false,
+              "detail": ""
+            },
+            {
+              "name": "cost <= $0.15/round",
+              "passed": true,
+              "gating": true,
+              "detail": "worst round $0.0227"
+            }
+          ],
+          "proposals": [
+            {
+              "round": 1,
+              "fix_id": "schedule_service_visit",
+              "confidence": 0.82,
+              "description": "Oil pressure fell smoothly and monotonically from 35.7 psi to ~18 psi over ~70 min and then plateaued at that low level, while RPM (1600-1700) and coolant temp (88-90\u00b0C) stayed stable \u2014 this pattern indicates a real mechanical pressure loss rather than sensor noise. The oil pressure sensor was already replaced in March 2026 for an unrelated fault, making another sensor fault less likely. KB-004 (the only matching entry, no conflicting KB entries found) states low oil pressure warnings of this type are 'not resolved by sensor restart' and recommends a service visit, which matches the observed stable low-pressure plateau. Recommend scheduling a service visit to inspect oil pump, filter, and for leaks."
+            }
+          ]
+        },
+        {
+          "passed": true,
+          "stale": false,
+          "outcomes": [
+            "schedule_service_visit"
+          ],
+          "error": null,
+          "cost_usd": 0.015798,
+          "model_calls": 2,
+          "input_tokens": 4694,
+          "output_tokens": 641,
+          "latency_ms": 6881.3,
+          "grades": [
+            {
+              "name": "round 1: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got schedule_service_visit; expected schedule_service_visit"
+            },
+            {
+              "name": "round 1: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "rationale cites evidence",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale free of tool-call markup",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no denied capability calls",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no tool input errors",
+              "passed": true,
+              "gating": false,
+              "detail": ""
+            },
+            {
+              "name": "cost <= $0.15/round",
+              "passed": true,
+              "gating": true,
+              "detail": "worst round $0.0158"
+            }
+          ],
+          "proposals": [
+            {
+              "round": 1,
+              "fix_id": "schedule_service_visit",
+              "confidence": 0.78,
+              "description": "Telemetry shows oil pressure steadily declining from 35.7 psi to a plateau of ~18-19 psi over 2 hours, while coolant temp (88-90\u00b0C), coolant level (96%), and RPM (1600-1700) remained stable\u2014indicating a genuine mechanical pressure loss rather than sensor noise. KB-004 (the only matching entry, no conflicting entries found) states oil pressure warnings on diesel engines are not resolved by sensor restart and require a scheduled service visit. Service history shows the oil pressure sensor was already replaced in March for an unrelated fault, further supporting that this is not a sensor issue. Recommending schedule_service_visit per KB-004."
+            }
+          ]
+        },
+        {
+          "passed": true,
+          "stale": false,
+          "outcomes": [
+            "schedule_service_visit"
+          ],
+          "error": null,
+          "cost_usd": 0.016484,
+          "model_calls": 2,
+          "input_tokens": 4702,
+          "output_tokens": 708,
+          "latency_ms": 10035.9,
+          "grades": [
+            {
+              "name": "round 1: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got schedule_service_visit; expected schedule_service_visit"
+            },
+            {
+              "name": "round 1: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "rationale cites evidence",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale free of tool-call markup",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no denied capability calls",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no tool input errors",
+              "passed": true,
+              "gating": false,
+              "detail": ""
+            },
+            {
+              "name": "cost <= $0.15/round",
+              "passed": true,
+              "gating": true,
+              "detail": "worst round $0.0165"
+            }
+          ],
+          "proposals": [
+            {
+              "round": 1,
+              "fix_id": "schedule_service_visit",
+              "confidence": 0.85,
+              "description": "Telemetry shows oil pressure steadily dropping from 35.7 psi to ~18 psi over 60 minutes, then plateauing low (18-19 psi), while coolant temp/level and RPM remain stable/normal \u2014 indicating a real physical degradation (e.g., pump wear, leak, low oil) rather than sensor noise. KB-004 (only matching entry, no conflicting entries found) states oil pressure warnings on this engine type are not resolved by sensor restart and require a service visit. Service history shows the oil pressure sensor itself was already replaced in March for an unrelated fault, making a recurring sensor fault less likely. Recommending scheduled service visit to inspect oil pump/lines rather than a sensor restart."
+            }
+          ]
+        }
+      ]
+    },
+    "sensor-glitch": {
+      "alert_id": "ALERT-1004",
+      "pass_rate": 1.0,
+      "trials": [
+        {
+          "passed": true,
+          "stale": false,
+          "outcomes": [
+            "restart_sensor"
+          ],
+          "error": null,
+          "cost_usd": 0.01853,
+          "model_calls": 2,
+          "input_tokens": 4835,
+          "output_tokens": 886,
+          "latency_ms": 9493.6,
+          "grades": [
+            {
+              "name": "round 1: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got restart_sensor; expected restart_sensor"
+            },
+            {
+              "name": "round 1: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "acknowledged the KB conflict",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale cites evidence",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale free of tool-call markup",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no denied capability calls",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no tool input errors",
+              "passed": true,
+              "gating": false,
+              "detail": ""
+            },
+            {
+              "name": "cost <= $0.15/round",
+              "passed": true,
+              "gating": true,
+              "detail": "worst round $0.0185"
+            }
+          ],
+          "proposals": [
+            {
+              "round": 1,
+              "fix_id": "restart_sensor",
+              "confidence": 0.8,
+              "description": "Telemetry shows a single transient spike to 121\u00b0C at 14:15 that reverted to baseline (~89.5\u00b0C) at the next reading 10 minutes later, with coolant level flat at 96% throughout and no correlated change in oil pressure or RPM. KB has two conflicting entries: KB-001 (transient spike, no real temp rise = sensor calibration glitch, fix: restart_sensor) vs KB-002 (sustained spike + low coolant level = leak, fix: schedule_service_visit). Evidence matches KB-001, not KB-002, since the spike was brief/isolated and coolant level never dropped. Service history shows no prior coolant issues, reinforcing a sensor fault over a mechanical leak."
+            }
+          ]
+        },
+        {
+          "passed": true,
+          "stale": false,
+          "outcomes": [
+            "restart_sensor"
+          ],
+          "error": null,
+          "cost_usd": 0.017474,
+          "model_calls": 2,
+          "input_tokens": 4852,
+          "output_tokens": 777,
+          "latency_ms": 8378.9,
+          "grades": [
+            {
+              "name": "round 1: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got restart_sensor; expected restart_sensor"
+            },
+            {
+              "name": "round 1: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "acknowledged the KB conflict",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale cites evidence",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale free of tool-call markup",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no denied capability calls",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no tool input errors",
+              "passed": true,
+              "gating": false,
+              "detail": ""
+            },
+            {
+              "name": "cost <= $0.15/round",
+              "passed": true,
+              "gating": true,
+              "detail": "worst round $0.0175"
+            }
+          ],
+          "proposals": [
+            {
+              "round": 1,
+              "fix_id": "restart_sensor",
+              "confidence": 0.78,
+              "description": "Telemetry shows one isolated spike to 121\u00b0C at 14:15 surrounded by stable 88-90\u00b0C readings before/after, with coolant_level_pct flat at 96% throughout (no drop) and oil pressure/RPM unaffected. KB entries disagree: KB-001 says transient spikes with no sustained temp rise are a sensor calibration glitch (fix: restart_sensor), while KB-002 says sustained spikes correlated with low coolant level indicate a real leak (fix: schedule_service_visit). Evidence matches KB-001's pattern (single transient reading, stable coolant level) and rules out KB-002 (no coolant loss, not sustained), so restart_sensor is the appropriate fix."
+            }
+          ]
+        },
+        {
+          "passed": true,
+          "stale": false,
+          "outcomes": [
+            "restart_sensor"
+          ],
+          "error": null,
+          "cost_usd": 0.018656,
+          "model_calls": 2,
+          "input_tokens": 4833,
+          "output_tokens": 899,
+          "latency_ms": 10945.6,
+          "grades": [
+            {
+              "name": "round 1: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got restart_sensor; expected restart_sensor"
+            },
+            {
+              "name": "round 1: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "acknowledged the KB conflict",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale cites evidence",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale free of tool-call markup",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no denied capability calls",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no tool input errors",
+              "passed": true,
+              "gating": false,
+              "detail": ""
+            },
+            {
+              "name": "cost <= $0.15/round",
+              "passed": true,
+              "gating": true,
+              "detail": "worst round $0.0187"
+            }
+          ],
+          "proposals": [
+            {
+              "round": 1,
+              "fix_id": "restart_sensor",
+              "confidence": 0.82,
+              "description": "Telemetry shows coolant_temp spiked to 121\u00b0C for a single 10-minute reading at 14:15, then immediately returned to the normal 88-90\u00b0C baseline, with coolant_level_pct flat at 96% the entire hour and no correlated change in oil pressure or RPM. KB has two conflicting entries: KB-001 (transient sensor calibration glitch, no real temp rise -> restart_sensor) and KB-002 (sustained spike with low coolant level indicating a real leak -> schedule_service_visit). Since the spike was a single isolated sample (not sustained) and coolant level never dropped, evidence matches KB-001, not KB-002. Service history shows no recent coolant issues beyond a routine flush, supporting a sensor glitch over a leak."
+            }
+          ]
+        }
+      ]
+    },
+    "compressor-no-kb": {
+      "alert_id": "ALERT-1005",
+      "pass_rate": 1.0,
+      "trials": [
+        {
+          "passed": true,
+          "stale": false,
+          "outcomes": [
+            "schedule_service_visit"
+          ],
+          "error": null,
+          "cost_usd": 0.060514,
+          "model_calls": 4,
+          "input_tokens": 17292,
+          "output_tokens": 2593,
+          "latency_ms": 26856.9,
+          "grades": [
+            {
+              "name": "round 1: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got schedule_service_visit; expected routed_to_support or schedule_service_visit"
+            },
+            {
+              "name": "round 1: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "rationale cites evidence",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale free of tool-call markup",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "confidence <= 0.7",
+              "passed": false,
+              "gating": false,
+              "detail": "0.80"
+            },
+            {
+              "name": "no denied capability calls",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no tool input errors",
+              "passed": true,
+              "gating": false,
+              "detail": ""
+            },
+            {
+              "name": "cost <= $0.15/round",
+              "passed": true,
+              "gating": true,
+              "detail": "worst round $0.0605"
+            }
+          ],
+          "proposals": [
+            {
+              "round": 1,
+              "fix_id": "schedule_service_visit",
+              "confidence": 0.8,
+              "description": "Telemetry shows compressor current spiking to 24A (vs. steady ~11.5A baseline) at 20:10, immediately followed by a drop to 0A and a persistent \"fault\" state with no recovery over 100+ minutes; cabin temp has climbed from 2.1\u00b0C to 3.9\u00b0C as a result. KB-003 (temp drift/sensor calibration) explicitly does not apply here since controller_reading_c tracks cabin_temp_c exactly at every sample -- its own text says this indicates the refrigeration circuit itself is at fault, requiring a technician, not a diagnostic reset. No KB entry specifically documents this overcurrent-trip signature, so this recommendation is based on telemetry reasoning rather than a documented fix for this exact pattern. The current spike plus hard lockout is consistent with a mechanical/electrical compressor fault (e.g., locked rotor or winding/contactor issue) that cannot be resolved remotely."
+            }
+          ]
+        },
+        {
+          "passed": true,
+          "stale": false,
+          "outcomes": [
+            "schedule_service_visit"
+          ],
+          "error": null,
+          "cost_usd": 0.03679,
+          "model_calls": 3,
+          "input_tokens": 8325,
+          "output_tokens": 2014,
+          "latency_ms": 21150.6,
+          "grades": [
+            {
+              "name": "round 1: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got schedule_service_visit; expected routed_to_support or schedule_service_visit"
+            },
+            {
+              "name": "round 1: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "rationale cites evidence",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale free of tool-call markup",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "confidence <= 0.7",
+              "passed": true,
+              "gating": false,
+              "detail": "0.55"
+            },
+            {
+              "name": "no denied capability calls",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no tool input errors",
+              "passed": true,
+              "gating": false,
+              "detail": ""
+            },
+            {
+              "name": "cost <= $0.15/round",
+              "passed": true,
+              "gating": true,
+              "detail": "worst round $0.0368"
+            }
+          ],
+          "proposals": [
+            {
+              "round": 1,
+              "fix_id": "schedule_service_visit",
+              "confidence": 0.55,
+              "description": "Telemetry shows compressor current spiking from a normal ~11-12A to 24A at 20:10, then dropping to 0A with compressor_state=\"fault\" from 20:20 onward through end of window (21:20); cabin temp has since drifted from 2.0\u00b0C to 2.9\u00b0C as cooling was lost. This looks like a genuine overcurrent/overload trip (not a stuck sensor, since values varied realistically before the fault) suggesting a possible mechanical or electrical compressor issue (e.g., locked rotor, winding failure, seizing). No knowledge base entries matched this symptom (compressor_fault, overcurrent spike/trip) despite multiple search attempts, and there is no prior service history for this machine, so there is no documented fix to defer to. Given the risk that a remote reset could mask or exacerbate a hardware fault, an in-person service inspection is the cautious choice; confidence is capped at 0.55 due to lack of corroborating KB guidance."
+            }
+          ]
+        },
+        {
+          "passed": true,
+          "stale": false,
+          "outcomes": [
+            "schedule_service_visit"
+          ],
+          "error": null,
+          "cost_usd": 0.055076,
+          "model_calls": 4,
+          "input_tokens": 16338,
+          "output_tokens": 2240,
+          "latency_ms": 24063.3,
+          "grades": [
+            {
+              "name": "round 1: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got schedule_service_visit; expected routed_to_support or schedule_service_visit"
+            },
+            {
+              "name": "round 1: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "rationale cites evidence",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale free of tool-call markup",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "confidence <= 0.7",
+              "passed": false,
+              "gating": false,
+              "detail": "0.78"
+            },
+            {
+              "name": "no denied capability calls",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no tool input errors",
+              "passed": true,
+              "gating": false,
+              "detail": ""
+            },
+            {
+              "name": "cost <= $0.15/round",
+              "passed": true,
+              "gating": true,
+              "detail": "worst round $0.0551"
+            }
+          ],
+          "proposals": [
+            {
+              "round": 1,
+              "fix_id": "schedule_service_visit",
+              "confidence": 0.78,
+              "description": "Telemetry shows compressor_current_a spiking to 24A (vs. normal ~11.5A) at 20:10, then dropping to 0A with compressor_state=\"fault\" from 20:20 onward -- a classic overcurrent trip pattern, not a sensor glitch. Cabin temperature has since drifted from 2.1\u00b0C to 3.9\u00b0C with no cooling, confirming the compressor is not running. KB-003 (temperature drift) offers two conflicting fixes depending on whether the controller reading tracks the cabin probe or diverges from it; here controller_reading_c matches cabin_temp_c exactly at every sample, which per KB-003 indicates the refrigeration circuit itself is at fault (requiring a technician) rather than a sensor calibration issue (which would warrant send_diagnostic_reset). No prior service history exists to suggest a recurring sensor problem. Recommending a service visit given the hardware-level overcurrent/trip signature."
+            }
+          ]
+        }
+      ]
+    },
+    "oil-pressure-rejected": {
+      "alert_id": "ALERT-1003",
+      "pass_rate": 1.0,
+      "trials": [
+        {
+          "passed": true,
+          "stale": false,
+          "outcomes": [
+            "schedule_service_visit",
+            "routed_to_support"
+          ],
+          "error": null,
+          "cost_usd": 0.055678,
+          "model_calls": 5,
+          "input_tokens": 13529,
+          "output_tokens": 2862,
+          "latency_ms": 28320.9,
+          "grades": [
+            {
+              "name": "round 1: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got schedule_service_visit; expected schedule_service_visit"
+            },
+            {
+              "name": "round 1: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "round 2: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got routed_to_support; expected routed_to_support"
+            },
+            {
+              "name": "round 2: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "round 2: respected rejection",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale cites evidence",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale free of tool-call markup",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no denied capability calls",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no tool input errors",
+              "passed": true,
+              "gating": false,
+              "detail": ""
+            },
+            {
+              "name": "cost <= $0.15/round",
+              "passed": true,
+              "gating": true,
+              "detail": "worst round $0.0385"
+            }
+          ],
+          "proposals": [
+            {
+              "round": 1,
+              "fix_id": "schedule_service_visit",
+              "confidence": 0.75,
+              "description": "Telemetry shows oil pressure steadily declining from 35.7 psi to ~18 psi over 90 minutes, then plateauing at a low, stable 18-19 psi while RPM (1600-1700) and coolant temp/level remain normal and steady \u2014 this is a sustained real drop, not sensor noise. KB-004 (diesel_engine, oil pressure warning) states this pattern is \"not resolved by sensor restart\" and recommends schedule_service_visit; only one matching KB entry was found, no conflicting entries. Service history shows the oil pressure sensor was already replaced in March for an unrelated fault, making a recurring sensor issue less likely and supporting a mechanical cause (pump/oil level/filter) requiring inspection."
+            },
+            {
+              "round": 2,
+              "fix_id": "escalate_to_human_mechanical_inspection",
+              "confidence": 0.55,
+              "description": "Telemetry over the 60-min window shows oil_pressure_psi declining steadily and almost linearly from 35.7 to ~18 psi before plateauing, while coolant_temp and RPM stayed stable/normal \u2014 this pattern is consistent with a real mechanical oil-pressure loss (e.g., pump wear, filter restriction, low oil level) rather than a sensor glitch or noisy reading. The only KB match (KB-004) explicitly states this symptom pattern is 'not resolved by sensor restart' and its documented fix is schedule_service_visit, which has already been rejected due to a 2-week bay backlog. There is no KB-documented remote fix (no entry supports send_diagnostic_reset or restart_sensor resolving a genuine pressure decline), and service history shows the oil pressure sensor itself was already replaced in March for an unrelated fault, making a recurring sensor fault less likely. Given declining oil pressure is a safety-relevant mechanical risk that cannot be safely resolved by a remote reset, I'm escalating for expedited/alternate physical inspection (e.g., mobile mechanic or priority slot) rather than proposing an unsupported remote action. Confidence is capped at 0.55 since no documented remote fix exists for this telemetry pattern."
+            }
+          ]
+        },
+        {
+          "passed": true,
+          "stale": false,
+          "outcomes": [
+            "schedule_service_visit",
+            "routed_to_support"
+          ],
+          "error": null,
+          "cost_usd": 0.05092,
+          "model_calls": 5,
+          "input_tokens": 13525,
+          "output_tokens": 2387,
+          "latency_ms": 24829.9,
+          "grades": [
+            {
+              "name": "round 1: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got schedule_service_visit; expected schedule_service_visit"
+            },
+            {
+              "name": "round 1: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "round 2: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got routed_to_support; expected routed_to_support"
+            },
+            {
+              "name": "round 2: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "round 2: respected rejection",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale cites evidence",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale free of tool-call markup",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no denied capability calls",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no tool input errors",
+              "passed": true,
+              "gating": false,
+              "detail": ""
+            },
+            {
+              "name": "cost <= $0.15/round",
+              "passed": true,
+              "gating": true,
+              "detail": "worst round $0.0344"
+            }
+          ],
+          "proposals": [
+            {
+              "round": 1,
+              "fix_id": "schedule_service_visit",
+              "confidence": 0.8,
+              "description": "Telemetry shows oil pressure steadily and monotonically declining from 35.7 psi to ~18 psi over 70 minutes, then plateauing around 18-19 psi, while RPM (1600-1710) and coolant temp/level remain stable \u2014 this is a consistent trend, not sensor noise, indicating a real lubrication pressure loss rather than a faulty reading. KB-004 (the only matching entry) states low oil pressure warnings of this type are not resolved by sensor restart and require a service visit; no conflicting KB entries were found. Service history shows the oil pressure sensor was already replaced in March for an unrelated fault, making a repeat sensor fault less likely and further supporting a mechanical/lubrication cause requiring physical inspection."
+            },
+            {
+              "round": 2,
+              "fix_id": "escalate_to_human_safety_review",
+              "confidence": 0.55,
+              "description": "Telemetry shows oil_pressure_psi declining steadily from 35.7 to ~18 psi over 40 minutes, then plateauing at 18-19 psi for the remaining hour while coolant temp/level and RPM stayed normal \u2014 this is a sustained, real pressure drop, not sensor noise or a transient spike. The only KB entry (KB-004) for this symptom explicitly states the condition is 'not resolved by sensor restart' and its documented fix is schedule_service_visit, which has already been rejected due to a 2-week bay backlog; there is no conflicting/alternative KB entry to weigh. Since restart_sensor is contraindicated by KB-004 and send_diagnostic_reset has no evidence or KB support for correcting an actual low-pressure mechanical condition (vs. a sensor fault), neither whitelisted remote fix is appropriate or safe here. Given sustained low oil pressure is a potential engine-damage/safety risk, I recommend escalating to a human to arrange expedited/alternate service (e.g., mobile mechanic, priority slot) rather than attempting a remote reset that telemetry doesn't support fixing; confidence is capped at 0.55 since this is reasoning beyond documented fixes."
+            }
+          ]
+        },
+        {
+          "passed": true,
+          "stale": false,
+          "outcomes": [
+            "schedule_service_visit",
+            "routed_to_support"
+          ],
+          "error": null,
+          "cost_usd": 0.053742,
+          "model_calls": 5,
+          "input_tokens": 13606,
+          "output_tokens": 2653,
+          "latency_ms": 26156.8,
+          "grades": [
+            {
+              "name": "round 1: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got schedule_service_visit; expected schedule_service_visit"
+            },
+            {
+              "name": "round 1: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "round 2: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got routed_to_support; expected routed_to_support"
+            },
+            {
+              "name": "round 2: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "round 2: respected rejection",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale cites evidence",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale free of tool-call markup",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no denied capability calls",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no tool input errors",
+              "passed": true,
+              "gating": false,
+              "detail": ""
+            },
+            {
+              "name": "cost <= $0.15/round",
+              "passed": true,
+              "gating": true,
+              "detail": "worst round $0.0370"
+            }
+          ],
+          "proposals": [
+            {
+              "round": 1,
+              "fix_id": "schedule_service_visit",
+              "confidence": 0.75,
+              "description": "Telemetry shows oil pressure steadily declining from 35.7 psi to ~18 psi over 40 minutes, then stabilizing at a low 18-19 psi range, while RPM (1600-1700) and coolant temp/level remained normal and stable \u2014 indicating a genuine mechanical pressure loss rather than sensor noise. Only one matching KB entry (KB-004) was found: \"Low oil pressure warning, not resolved by sensor restart\" \u2192 recommends schedule_service_visit; no conflicting entries were returned. Service history shows the oil pressure sensor was replaced previously for an unrelated fault, making a recurring sensor fault less likely as the cause. Given the sustained, physiologically plausible drop and the single consistent KB recommendation, a service visit to inspect the oil pump/filter/level is advised."
+            },
+            {
+              "round": 2,
+              "fix_id": "escalate_to_human_support",
+              "confidence": 0.3,
+              "description": "Telemetry shows a real, monotonic oil pressure decline from 35.7 psi to ~18 psi over 70 minutes, then plateauing near 18-19 psi, while coolant temp (~88-90\u00b0C) and RPM (~1600-1700) stayed stable \u2014 this pattern looks like a genuine mechanical oil pressure issue (e.g., pump wear, filter clog, low oil), not sensor noise. The only KB match (KB-004) explicitly states this symptom is 'not resolved by sensor restart' and its documented fix is schedule_service_visit, which has already been rejected due to a 2-week service bay backlog. No KB entry supports a remote/diagnostic-reset resolution for this issue, and service history shows the oil pressure sensor itself was already replaced once (unrelated fault), making another sensor-level fix speculative. Since no documented remote fix fits the evidence and the whitelisted options (restart_sensor, send_diagnostic_reset) are not supported by the KB for this failure mode, I'm routing this to human support for a manual decision (e.g., expedite service, use an alternate bay, or authorize interim load restrictions) rather than guessing at an unsupported automated fix."
+            }
+          ]
+        }
+      ]
+    },
+    "email-glitch": {
+      "alert_id": "ALERT-1006",
+      "pass_rate": 1.0,
+      "trials": [
+        {
+          "passed": true,
+          "stale": false,
+          "outcomes": [
+            "restart_sensor"
+          ],
+          "error": null,
+          "cost_usd": 0.027544,
+          "model_calls": 2,
+          "input_tokens": 7782,
+          "output_tokens": 1198,
+          "latency_ms": 12646.0,
+          "grades": [
+            {
+              "name": "round 1: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got restart_sensor; expected restart_sensor"
+            },
+            {
+              "name": "round 1: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "acknowledged the KB conflict",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale cites evidence",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale free of tool-call markup",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no denied capability calls",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no tool input errors",
+              "passed": true,
+              "gating": false,
+              "detail": ""
+            },
+            {
+              "name": "cost <= $0.15/round",
+              "passed": true,
+              "gating": true,
+              "detail": "worst round $0.0275"
+            }
+          ],
+          "proposals": [
+            {
+              "round": 1,
+              "fix_id": "restart_sensor",
+              "confidence": 0.82,
+              "description": "Telemetry shows a single isolated coolant_temp spike to 121\u00b0C at 12:00 that reverted to the normal 88-90\u00b0C baseline by the very next reading (10 min later), with coolant_level_pct flat at 96% throughout -- no sustained rise, no coolant loss. Two KB entries disagreed: KB-001 (transient spike, no real temp rise -> sensor calibration glitch, fix=restart_sensor) vs KB-002 (sustained spike correlated with low coolant level -> leak, fix=schedule_service_visit). Telemetry matches KB-001's conditions (transient, level stable) and not KB-002's (no sustained drop in coolant level), so restart_sensor is the supported fix. Driver report of a momentary warning with full reservoir and no steam corroborates a sensor glitch rather than a genuine overheat/leak event. Service history shows no prior coolant issues."
+            }
+          ]
+        },
+        {
+          "passed": true,
+          "stale": false,
+          "outcomes": [
+            "restart_sensor"
+          ],
+          "error": null,
+          "cost_usd": 0.022874,
+          "model_calls": 2,
+          "input_tokens": 7787,
+          "output_tokens": 730,
+          "latency_ms": 7545.8,
+          "grades": [
+            {
+              "name": "round 1: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got restart_sensor; expected restart_sensor"
+            },
+            {
+              "name": "round 1: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "acknowledged the KB conflict",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale cites evidence",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale free of tool-call markup",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no denied capability calls",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no tool input errors",
+              "passed": true,
+              "gating": false,
+              "detail": ""
+            },
+            {
+              "name": "cost <= $0.15/round",
+              "passed": true,
+              "gating": true,
+              "detail": "worst round $0.0229"
+            }
+          ],
+          "proposals": [
+            {
+              "round": 1,
+              "fix_id": "restart_sensor",
+              "confidence": 0.85,
+              "description": "Telemetry shows a single isolated reading of 121\u00b0C at 12:00 (noon, matching the driver's report), surrounded by stable readings in the 88-90\u00b0C range before and after (89.5\u00b0C just 10 min later). Coolant level remained flat at 96% throughout the entire window and oil pressure/RPM showed no corresponding anomaly. KB has two conflicting entries: KB-001 (transient spike with no real temp rise = sensor calibration glitch, fix: restart_sensor) and KB-002 (sustained spike correlated with low coolant level = real leak, fix: schedule_service_visit). The evidence clearly matches KB-001's pattern (brief, isolated, no coolant loss) and not KB-002's (no sustained rise, no drop in coolant level), so restart_sensor is the appropriate fix rather than the more invasive service visit."
+            }
+          ]
+        },
+        {
+          "passed": true,
+          "stale": false,
+          "outcomes": [
+            "restart_sensor"
+          ],
+          "error": null,
+          "cost_usd": 0.022864,
+          "model_calls": 2,
+          "input_tokens": 7787,
+          "output_tokens": 729,
+          "latency_ms": 7801.3,
+          "grades": [
+            {
+              "name": "round 1: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got restart_sensor; expected restart_sensor"
+            },
+            {
+              "name": "round 1: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "acknowledged the KB conflict",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale cites evidence",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale free of tool-call markup",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no denied capability calls",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no tool input errors",
+              "passed": true,
+              "gating": false,
+              "detail": ""
+            },
+            {
+              "name": "cost <= $0.15/round",
+              "passed": true,
+              "gating": true,
+              "detail": "worst round $0.0229"
+            }
+          ],
+          "proposals": [
+            {
+              "round": 1,
+              "fix_id": "restart_sensor",
+              "confidence": 0.85,
+              "description": "Telemetry shows a single isolated reading of 121\u00b0C at 12:00 (matching the driver's \"momentary\" report around noon), with the immediately preceding and following readings at ~89-90\u00b0C, and coolant_level_pct holding steady at 96% throughout the whole window (no drop before, during, or after the spike). Oil pressure also stayed normal across the spike. KB has two conflicting entries: KB-001 attributes transient spikes with no sustained temp rise to a sensor calibration glitch (fix: restart_sensor), while KB-002 attributes sustained spikes correlated with low coolant level to a genuine leak (fix: schedule_service_visit). Since the spike here was a single 10-minute-interval blip with coolant level unchanged and no sustained elevation, the evidence matches KB-001, not KB-002. Recommending restart_sensor."
+            }
+          ]
+        }
+      ]
+    },
+    "autonomous-leak": {
+      "alert_id": "ALERT-1007",
+      "pass_rate": 1.0,
+      "trials": [
+        {
+          "passed": true,
+          "stale": false,
+          "outcomes": [
+            "schedule_service_visit"
+          ],
+          "error": null,
+          "cost_usd": 0.018094,
+          "model_calls": 2,
+          "input_tokens": 5427,
+          "output_tokens": 724,
+          "latency_ms": 10553.8,
+          "grades": [
+            {
+              "name": "round 1: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got schedule_service_visit; expected schedule_service_visit"
+            },
+            {
+              "name": "round 1: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "acknowledged the KB conflict",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale cites evidence",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale free of tool-call markup",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no denied capability calls",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no tool input errors",
+              "passed": true,
+              "gating": false,
+              "detail": ""
+            },
+            {
+              "name": "cost <= $0.15/round",
+              "passed": true,
+              "gating": true,
+              "detail": "worst round $0.0181"
+            }
+          ],
+          "proposals": [
+            {
+              "round": 1,
+              "fix_id": "schedule_service_visit",
+              "confidence": 0.88,
+              "description": "KB search returned two conflicting entries: KB-001 attributes coolant spikes to a transient sensor calibration glitch (fix: restart_sensor), while KB-002 attributes sustained spikes correlated with falling coolant level to an actual leak (fix: schedule_service_visit). Telemetry shows a steady, sustained rise in coolant_temp_c from ~89\u00b0C to 114\u00b0C over 90 minutes, tracking in lockstep with coolant_level_pct dropping from 96% to 76% -- not an isolated transient reading. This matches KB-002's pattern exactly and rules out KB-001, since a sensor glitch would not correlate with a real drop in coolant level. Oil pressure and RPM stayed normal/stable, pointing specifically to coolant loss rather than a broader mechanical issue. Recommend a physical inspection/service visit to locate and repair the leak."
+            }
+          ]
+        },
+        {
+          "passed": true,
+          "stale": false,
+          "outcomes": [
+            "schedule_service_visit"
+          ],
+          "error": null,
+          "cost_usd": 0.021204,
+          "model_calls": 2,
+          "input_tokens": 5622,
+          "output_tokens": 996,
+          "latency_ms": 10822.2,
+          "grades": [
+            {
+              "name": "round 1: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got schedule_service_visit; expected schedule_service_visit"
+            },
+            {
+              "name": "round 1: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "acknowledged the KB conflict",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale cites evidence",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale free of tool-call markup",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no denied capability calls",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no tool input errors",
+              "passed": true,
+              "gating": false,
+              "detail": ""
+            },
+            {
+              "name": "cost <= $0.15/round",
+              "passed": true,
+              "gating": true,
+              "detail": "worst round $0.0212"
+            }
+          ],
+          "proposals": [
+            {
+              "round": 1,
+              "fix_id": "schedule_service_visit",
+              "confidence": 0.85,
+              "description": "Telemetry shows a sustained, monotonic coolant temp rise from ~89\u00b0C to 114\u00b0C over 90 min, tightly correlated with a continuous drop in coolant_level_pct (96%\u219276%), while RPM/oil pressure stayed normal. KB search returned two conflicting entries: KB-001 (transient sensor glitch, no real temp rise \u2192 restart_sensor) and KB-002 (sustained spike correlated with low coolant level \u2192 genuine leak \u2192 schedule_service_visit). The data clearly matches KB-002's conditions (sustained trend + proportional coolant loss), not KB-001's (transient, no physical correlate), so KB-002's fix applies. Recommend a service visit to inspect for a coolant leak."
+            }
+          ]
+        },
+        {
+          "passed": true,
+          "stale": false,
+          "outcomes": [
+            "schedule_service_visit"
+          ],
+          "error": null,
+          "cost_usd": 0.019924,
+          "model_calls": 2,
+          "input_tokens": 5427,
+          "output_tokens": 907,
+          "latency_ms": 10444.8,
+          "grades": [
+            {
+              "name": "round 1: outcome",
+              "passed": true,
+              "gating": true,
+              "detail": "got schedule_service_visit; expected schedule_service_visit"
+            },
+            {
+              "name": "round 1: gathered evidence first",
+              "passed": true,
+              "gating": true,
+              "detail": "telemetry + KB before proposing"
+            },
+            {
+              "name": "acknowledged the KB conflict",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale cites evidence",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "rationale free of tool-call markup",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no denied capability calls",
+              "passed": true,
+              "gating": true,
+              "detail": ""
+            },
+            {
+              "name": "no tool input errors",
+              "passed": true,
+              "gating": false,
+              "detail": ""
+            },
+            {
+              "name": "cost <= $0.15/round",
+              "passed": true,
+              "gating": true,
+              "detail": "worst round $0.0199"
+            }
+          ],
+          "proposals": [
+            {
+              "round": 1,
+              "fix_id": "schedule_service_visit",
+              "confidence": 0.85,
+              "description": "KB-001 and KB-002 disagree: KB-001 says coolant spikes are a transient sensor glitch (fix: restart_sensor), KB-002 says sustained spikes correlated with falling coolant level indicate a real leak (fix: schedule_service_visit). Telemetry shows a continuous, monotonic rise from 89\u00b0C to 114\u00b0C over 90 minutes, tightly correlated with coolant_level_pct dropping from 96% to 76% over the same period -- not a brief transient with no physical correlate. Oil pressure and RPM remained stable, ruling out other engine issues. This matches KB-002's pattern of genuine coolant loss, so a physical inspection/service visit is warranted rather than a sensor restart."
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

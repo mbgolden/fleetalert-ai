@@ -1,17 +1,17 @@
 {
   "scenario_id": "oil-pressure-rejected",
-  "model": "claude-sonnet-5",
-  "recorded_at": "2026-10-01T00:15:15+00:00",
+  "model": "claude-sonnet-5-5",
+  "recorded_at": "2026-10-01T02:18:35+00:00",
   "rounds": [
     {
-      "fingerprint": "95af2ac59c61929b",
+      "fingerprint": "7b3c8a6cbdaa7c28",
       "responses": [
         {
           "stop_reason": "tool_use",
           "content": [
             {
               "type": "tool_use",
-              "id": "toolu_01GHm42MPZQ9mAgRP932NcQr",
+              "id": "toolu_01M3G3hwwwoEbNaUyjEcb4Qi",
               "name": "get_telemetry_snapshot",
               "input": {
                 "window_minutes": 60
@@ -19,7 +19,7 @@
             },
             {
               "type": "tool_use",
-              "id": "toolu_017cD8xQ3cb3JVA2nAQtrER9",
+              "id": "toolu_01XGRmRs9mdqdQBJdKuBgeE5",
               "name": "search_knowledge_base",
               "input": {
                 "symptom_description": "oil pressure warning"
@@ -27,14 +27,14 @@
             },
             {
               "type": "tool_use",
-              "id": "toolu_01BBukvfLiqCcPTY9xrrXoP6",
+              "id": "toolu_01W4rtrwbanAcxtHfHotTeP1",
               "name": "get_service_history",
               "input": {}
             }
           ],
           "usage": {
-            "input_tokens": 1493,
-            "output_tokens": 155,
+            "input_tokens": 1427,
+            "output_tokens": 143,
             "cache_creation_input_tokens": 0,
             "cache_read_input_tokens": 0
           }
@@ -44,18 +44,18 @@
           "content": [
             {
               "type": "tool_use",
-              "id": "toolu_014q9xtdcYJwtWCHzVabnMrj",
+              "id": "toolu_0194Xv4GRKG5iSfKTFguWTRU",
               "name": "propose_fix",
               "input": {
                 "fix_id": "schedule_service_visit",
                 "confidence": 0.85,
-                "description": "Telemetry shows oil_pressure_psi steadily declining from 35.7 to ~18 psi over 60 minutes before plateauing, while coolant_temp, coolant_level, and RPM remained stable \u2014 indicating a real mechanical issue (e.g., pump wear, leak, or filter restriction) rather than sensor noise or a thermal/load-driven fluctuation. Only one KB entry matched (KB-004: \"oil pressure warning, not resolved by sensor restart\" \u2192 schedule_service_visit); no conflicting entries were found. Service history shows the oil pressure sensor was already replaced in March for an unrelated fault, making a recurring sensor fault less likely. Recommend scheduling a service visit to inspect the oil pump/lines rather than attempting a sensor restart."
+                "description": "Oil pressure fell steadily from 35.7 to ~18.5 psi over about 70 minutes, then plateaued at 18-19 psi, while RPM (1600-1710), coolant temp (88-90C) and coolant level (96%) stayed normal. A real pressure loss is more likely than sensor noise. The sensor was replaced in March 2026, so it is unlikely to be faulty. KB-004 (the only match, so no conflict) says low oil pressure that a sensor restart doesn't resolve needs a service visit. Recommend inspecting oil level, pump and filter."
               }
             }
           ],
           "usage": {
-            "input_tokens": 3192,
-            "output_tokens": 649,
+            "input_tokens": 3114,
+            "output_tokens": 297,
             "cache_creation_input_tokens": 0,
             "cache_read_input_tokens": 0
           }
@@ -63,14 +63,14 @@
       ]
     },
     {
-      "fingerprint": "bff2b93bd50cfa66",
+      "fingerprint": "3c8d5b503893fc2f",
       "responses": [
         {
           "stop_reason": "tool_use",
           "content": [
             {
               "type": "tool_use",
-              "id": "toolu_01FgU7i49ud5gemsKz9JJGxo",
+              "id": "toolu_01LzmM6Wb9Hf8ibSpSrtDRMM",
               "name": "get_telemetry_snapshot",
               "input": {
                 "window_minutes": 60
@@ -78,22 +78,22 @@
             },
             {
               "type": "tool_use",
-              "id": "toolu_015nEm2FDKfBEMnJPK7jYdDp",
+              "id": "toolu_018rHKSK1jiFNgjNktyUxdw3",
               "name": "search_knowledge_base",
               "input": {
-                "symptom_description": "oil pressure warning on diesel engine"
+                "symptom_description": "oil pressure warning"
               }
             },
             {
               "type": "tool_use",
-              "id": "toolu_01HnMYjiC5fhrwpdycWe19Ub",
+              "id": "toolu_016mmTSCJLzpXvSb1Cdz8zjN",
               "name": "get_service_history",
               "input": {}
             }
           ],
           "usage": {
-            "input_tokens": 1634,
-            "output_tokens": 180,
+            "input_tokens": 1568,
+            "output_tokens": 143,
             "cache_creation_input_tokens": 0,
             "cache_read_input_tokens": 0
           }
@@ -103,45 +103,18 @@
           "content": [
             {
               "type": "tool_use",
-              "id": "toolu_01UiDTZWs9j3eeECs2nBW9EC",
-              "name": "search_knowledge_base",
-              "input": {
-                "symptom_description": "oil pressure sensor reading drifting low, possibly faulty sensor rather than true low oil pressure"
-              }
-            },
-            {
-              "type": "tool_use",
-              "id": "toolu_01TFJSBptiuBBYFk7wUMR2Ye",
-              "name": "search_knowledge_base",
-              "input": {
-                "symptom_description": "gradual oil pressure decline over time diesel engine remote diagnostic reset"
-              }
-            }
-          ],
-          "usage": {
-            "input_tokens": 3358,
-            "output_tokens": 268,
-            "cache_creation_input_tokens": 0,
-            "cache_read_input_tokens": 0
-          }
-        },
-        {
-          "stop_reason": "tool_use",
-          "content": [
-            {
-              "type": "tool_use",
-              "id": "toolu_01EdzuXHwM9iCLYDSQ428GNQ",
+              "id": "toolu_01JTHUDHEk6L9CEgd7dU1QHr",
               "name": "propose_fix",
               "input": {
                 "fix_id": "escalate_to_human_support",
-                "confidence": 0.3,
-                "description": "Telemetry shows oil pressure declining steadily and monotonically from 35.7 psi to ~18 psi over ~70 minutes, then plateauing near 18-19 psi, while coolant temp (~88-90\u00b0C) and RPM (~1600-1700) stayed stable \u2014 this pattern looks like a genuine mechanical oil pressure loss (e.g., pump wear, leak, or filter restriction), not sensor noise. Only one relevant KB entry exists (KB-004: 'low oil pressure warning, not resolved by sensor restart,' fix = schedule_service_visit), so there is no documented disagreement to reconcile, but it also rules out restart_sensor as effective, and no KB entry supports send_diagnostic_reset for this symptom. Since the one documented remote-capable option (restart_sensor) is explicitly contraindicated by KB-004 and the only validated fix (schedule_service_visit) was already rejected due to bay scheduling, there is no safe whitelisted remote fix supported by evidence. Recommend human review to arrange an expedited/out-of-network service slot or interim operating restrictions (e.g., load/RPM limits) rather than a remote sensor action, given the risk of true low oil pressure causing engine damage."
+                "confidence": 0.4,
+                "description": "Oil pressure fell steadily from 35.7 psi (07:10) to about 18-19 psi (since 08:10) and has stayed low. Coolant temperature (88-90 C), coolant level (96%) and RPM (about 1600-1700) are normal. The steady decline looks like a real pressure loss, not a sensor glitch. The only KB entry, KB-004, says a low oil pressure warning isn't resolved by a sensor restart and its fix is schedule_service_visit. A human already rejected that fix because the bay is booked for two weeks. The sensor was replaced in March, which makes a sensor fault less likely. No remote fix is documented. restart_sensor and send_diagnostic_reset would not address a real pressure loss. I recommend human review for an alternative: an earlier external shop, an oil level and condition check, or limiting use of the truck until it's inspected."
               }
             }
           ],
           "usage": {
-            "input_tokens": 3882,
-            "output_tokens": 1276,
+            "input_tokens": 3255,
+            "output_tokens": 560,
             "cache_creation_input_tokens": 0,
             "cache_read_input_tokens": 0
           }

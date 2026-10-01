@@ -1,55 +1,55 @@
 {
-  "model": "claude-sonnet-5",
-  "recorded_at": "2026-10-01T00:11:56+00:00",
+  "model": "claude-sonnet-5-5",
+  "recorded_at": "2026-10-01T02:16:59+00:00",
   "overall_pass_rate": 1.0,
   "scenarios": {
     "coolant-leak": {
       "pass_rate": 1.0,
       "trials": 3,
-      "mean_cost_usd": 0.018279,
-      "mean_latency_ms": 8558.3
+      "mean_cost_usd": 0.013955,
+      "mean_latency_ms": 4293.4
     },
     "cabin-drift": {
       "pass_rate": 1.0,
       "trials": 3,
-      "mean_cost_usd": 0.022813,
-      "mean_latency_ms": 9777.2
+      "mean_cost_usd": 0.015629,
+      "mean_latency_ms": 5317.6
     },
     "oil-pressure": {
       "pass_rate": 1.0,
       "trials": 3,
-      "mean_cost_usd": 0.018742,
-      "mean_latency_ms": 9647.2
+      "mean_cost_usd": 0.013572,
+      "mean_latency_ms": 4821.2
     },
     "sensor-glitch": {
       "pass_rate": 1.0,
       "trials": 3,
-      "mean_cost_usd": 0.018875,
-      "mean_latency_ms": 9076.9
+      "mean_cost_usd": 0.013843,
+      "mean_latency_ms": 4238.5
     },
     "compressor-no-kb": {
       "pass_rate": 1.0,
       "trials": 3,
-      "mean_cost_usd": 0.049899,
-      "mean_latency_ms": 17833.4
+      "mean_cost_usd": 0.02301,
+      "mean_latency_ms": 7014.6
     },
     "oil-pressure-rejected": {
       "pass_rate": 1.0,
       "trials": 3,
-      "mean_cost_usd": 0.056493,
-      "mean_latency_ms": 28034.8
+      "mean_cost_usd": 0.035831,
+      "mean_latency_ms": 12175.2
     },
     "email-glitch": {
       "pass_rate": 1.0,
       "trials": 3,
-      "mean_cost_usd": 0.026455,
-      "mean_latency_ms": 11048.9
+      "mean_cost_usd": 0.015608,
+      "mean_latency_ms": 4904.2
     },
     "autonomous-leak": {
       "pass_rate": 1.0,
       "trials": 3,
-      "mean_cost_usd": 0.021075,
-      "mean_latency_ms": 10039.8
+      "mean_cost_usd": 0.014189,
+      "mean_latency_ms": 3996.6
     }
   }
 }
