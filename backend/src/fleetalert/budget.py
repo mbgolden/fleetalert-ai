@@ -54,17 +54,31 @@ def exhausted_message() -> str:
     )
 
 
-def reserve_round() -> bool:
-    max_rounds, max_cost = config.daily_investigation_cap(), config.daily_cost_cap_usd()
+# Load-test rounds (fleetalert.loadtest) call no model, so they get their
+# own usage row and never touch the demo's budget. Same write pattern,
+# so the load test still exercises it.
+LOAD_TEST_SCOPE = "loadtest"
+_LOAD_TEST_ROUND_CAP = 1_000_000
+
+
+def _row(scope: str | None) -> str:
+    return today() if scope is None else f"{today()}#{scope}"
+
+
+def reserve_round(scope: str | None = None) -> bool:
+    if scope == LOAD_TEST_SCOPE:
+        max_rounds, max_cost = _LOAD_TEST_ROUND_CAP, 1.0
+    else:
+        max_rounds, max_cost = config.daily_investigation_cap(), config.daily_cost_cap_usd()
     if max_rounds <= 0 or max_cost <= 0:
         # A zero cap is "off". Checked here because the conditional write
         # lets the day's first round through before its row exists.
         return False
     return repositories.reserve_usage(
-        today(), max_rounds=max_rounds, max_cost_usd=max_cost, expires_at=_expires_at()
+        _row(scope), max_rounds=max_rounds, max_cost_usd=max_cost, expires_at=_expires_at()
     )
 
 
-def record_cost(cost_usd: float | None) -> None:
+def record_cost(cost_usd: float | None, scope: str | None = None) -> None:
     if cost_usd:
-        repositories.add_usage_cost(today(), cost_usd, expires_at=_expires_at())
+        repositories.add_usage_cost(_row(scope), cost_usd, expires_at=_expires_at())

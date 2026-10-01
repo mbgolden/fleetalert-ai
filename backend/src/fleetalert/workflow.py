@@ -8,15 +8,16 @@ same loop, Capabilities Engine and human-confirmation wait run either way.
 from __future__ import annotations
 
 import json
+from typing import Any
 
 import boto3
 
 from fleetalert import config
 
 
-def start_investigation(alert_id: str, entry_point: str) -> None:
+def start_investigation(alert_id: str, entry_point: str, extra: dict[str, Any] | None = None) -> None:
     state_machine_arn = config.require(config.state_machine_arn(), "STATE_MACHINE_ARN")
     boto3.client("stepfunctions").start_execution(
         stateMachineArn=state_machine_arn,
-        input=json.dumps({"alert_id": alert_id, "entry_point": entry_point}),
+        input=json.dumps({"alert_id": alert_id, "entry_point": entry_point, **(extra or {})}),
     )

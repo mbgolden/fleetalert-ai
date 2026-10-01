@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Attr, Key
 from botocore.exceptions import ClientError
 
 from fleetalert.db import (
@@ -250,9 +250,23 @@ def get_alert(alert_id: str) -> dict[str, Any] | None:
 
 
 def list_alerts() -> list[dict[str, Any]]:
-    resp = get_dynamodb_resource().Table(ALERTS_TABLE).scan()
-    result: list[dict[str, Any]] = resp.get("Items", [])
-    return result
+    """Demo alerts only: load-test alerts (fleetalert.loadtest) are excluded.
+
+    Follows every page of the scan. It used to read only the first, which
+    was fine for 7 alerts and would silently drop alerts once a load test
+    pushed the table past one 1 MB page.
+    """
+    table = get_dynamodb_resource().Table(ALERTS_TABLE)
+    return _scan_all(table, FilterExpression=Attr("load_test").not_exists())
+
+
+def list_load_test_alerts(label: str) -> list[dict[str, Any]]:
+    table = get_dynamodb_resource().Table(ALERTS_TABLE)
+    return _scan_all(table, FilterExpression=Attr("load_test_label").eq(label))
+
+
+def delete_alert(alert_id: str) -> None:
+    get_dynamodb_resource().Table(ALERTS_TABLE).delete_item(Key={"alert_id": alert_id})
 
 
 class ConcurrentUpdateError(Exception):
@@ -394,6 +408,16 @@ def prune_traces_for_alert(alert_id: str, *, keep: int) -> None:
         for span in spans:
             if span["trace_id"] in stale:
                 batch.delete_item(Key={"trace_id": span["trace_id"], "span_id": span["span_id"]})
+
+
+def _scan_all(table: Any, **kwargs: Any) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    while True:
+        resp = table.scan(**kwargs)
+        items.extend(resp.get("Items", []))
+        if "LastEvaluatedKey" not in resp:
+            return items
+        kwargs["ExclusiveStartKey"] = resp["LastEvaluatedKey"]
 
 
 def _query_all(table: Any, **kwargs: Any) -> list[dict[str, Any]]:

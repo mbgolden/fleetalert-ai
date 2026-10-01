@@ -145,7 +145,8 @@ def run_investigation(
         },
     )
 
-    if not budget.reserve_round():
+    budget_scope = budget.LOAD_TEST_SCOPE if str(entry_point) == EntryPoint.LOAD_TEST else None
+    if not budget.reserve_round(budget_scope):
         # Daily cap reached (ADR-0017): end safely before any model call.
         # The entry points pre-check this too; this is the one that holds
         # for every path, including Step Functions retries.
@@ -325,7 +326,7 @@ def _record_round(
 ) -> None:
     """The round's root span, written once it ends. Cost is an estimate."""
     cost = pricing.estimate_cost_usd(model, usage)
-    budget.record_cost(cost)
+    budget.record_cost(cost, budget.LOAD_TEST_SCOPE if str(tracer.entry_point) == EntryPoint.LOAD_TEST else None)
     alert_logger(__name__, tracer.alert_id).info(
         "investigation round done: trace=%s outcome=%s calls=%d input=%d output=%d est_cost_usd=%s",
         tracer.trace_id,

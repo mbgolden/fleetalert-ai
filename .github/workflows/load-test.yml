@@ -1,0 +1,103 @@
+name: Load test
+
+# Pushes real investigations through the live pipeline at set rates, with a
+# scripted model so there's no Claude spend (docs/decisions/ADR-0023).
+# For each level it starts the load, waits for the queue to drain, records
+# the timings report, and cleans up. Results are committed to the branch the
+# workflow runs on (never main). Cost: Step Functions transitions and
+# DynamoDB writes, roughly $0.20 per 1,000 investigations.
+
+on:
+  workflow_dispatch:
+    inputs:
+      levels:
+        description: "Comma-separated rate_per_hour:minutes levels (minutes <= 12)"
+        required: true
+        default: "1000:5,10000:10,36000:5"
+      keep_data:
+        description: Keep the load-test alerts and traces afterwards (for inspection)
+        type: boolean
+        default: false
+
+concurrency:
+  group: load-test
+  cancel-in-progress: false
+
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    environment: aws-apply
+    permissions:
+      id-token: write
+      contents: write
+    env:
+      FUNCTION: fleetalert-ai-demo-load-test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_APPLY_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: Run levels
+        env:
+          LEVELS_INPUT: ${{ inputs.levels }}
+          KEEP_DATA: ${{ inputs.keep_data }}
+        run: |
+          set -euo pipefail
+          invoke() {
+            meta=$(aws lambda invoke --function-name "$FUNCTION" \
+              --cli-binary-format raw-in-base64-out --cli-read-timeout 900 \
+              --payload "$1" "$2")
+            if echo "$meta" | jq -e '.FunctionError' > /dev/null; then
+              echo "::error::Lambda error: $(cat "$2")"
+              exit 1
+            fi
+          }
+          mkdir -p docs/load-tests
+          stamp=$(date -u +%Y-%m-%dT%H%M)
+          echo "## Load test ($stamp)" >> "$GITHUB_STEP_SUMMARY"
+          IFS=',' read -ra LEVELS <<< "$LEVELS_INPUT"
+          for level in "${LEVELS[@]}"; do
+            rate="${level%%:*}"
+            minutes="${level##*:}"
+            if ! [[ "$rate" =~ ^[0-9]+$ && "$minutes" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+              echo "::error::Bad level '$level'; expected rate_per_hour:minutes, e.g. 10000:10"
+              exit 1
+            fi
+            label="${GITHUB_RUN_ID}-${rate}"
+            echo "::group::$rate/hour for $minutes minutes ($label)"
+            invoke "$(jq -nc --arg l "$label" --argjson r "$rate" --argjson m "$minutes" \
+              '{action:"run", label:$l, rate_per_hour:$r, minutes:$m}')" run.json
+            cat run.json
+            # Wait for the queue to drain: up to 15 minutes.
+            for i in $(seq 1 30); do
+              invoke "$(jq -nc --arg l "$label" '{action:"report", label:$l}')" report.json
+              pending=$(jq '.pending' report.json)
+              echo "poll $i: pending $pending"
+              [ "$pending" = "0" ] && break
+              sleep 30
+            done
+            jq -s '.[0] + {run: .[1]}' report.json run.json > "docs/load-tests/${stamp}-${rate}.json"
+            jq -r '.markdown' report.json >> "$GITHUB_STEP_SUMMARY"
+            jq -r '"Started \(.started) of \(.requested) (start errors: \(.start_errors | tostring)), achieved \(.achieved_rate_per_hour)/hour\n"' run.json >> "$GITHUB_STEP_SUMMARY"
+            if [ "$KEEP_DATA" != "true" ]; then
+              invoke "$(jq -nc --arg l "$label" '{action:"cleanup", label:$l}')" cleanup.json
+              cat cleanup.json
+            fi
+            echo "::endgroup::"
+          done
+      - name: Commit results
+        if: always() && github.ref_name != 'main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/load-tests
+          if git diff --cached --quiet; then
+            echo "Nothing recorded."
+          else
+            git commit -m "Record load test results (run ${GITHUB_RUN_ID})"
+            git push
+          fi

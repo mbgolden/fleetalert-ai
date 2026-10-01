@@ -56,6 +56,7 @@ class EntryPoint(StrEnum):
     WEB = "web"
     EMAIL = "email"
     AUTONOMOUS = "autonomous"
+    LOAD_TEST = "loadtest"
 
 
 def new_span_id() -> str:
