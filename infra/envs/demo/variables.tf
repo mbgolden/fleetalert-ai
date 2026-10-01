@@ -21,9 +21,9 @@ variable "daily_cost_cap_usd" {
 }
 
 variable "investigation_worker_concurrency" {
-  description = "Queued investigations run at once (ADR-0024). The account limit is 10; this leaves room for the API and the web path."
+  description = "Queued investigations run at once (ADR-0024). The account limit is 1,000; the cap bounds concurrent model calls, not Lambda slots."
   type        = number
-  default     = 6
+  default     = 50
 }
 
 variable "frontend_custom_domain" {
