@@ -154,3 +154,34 @@ def test_email_scenario_runs_through_the_email_entry_point() -> None:
     passed, _ = _grade("email-glitch", client)
     assert passed
     assert "<inbound_email>" in client.messages.calls[0]["messages"][0]["content"]
+
+
+def test_committed_scenarios_json_matches_the_definitions() -> None:
+    """The demo site's Evals page reads evals/scenarios.json. Regenerate it
+    with `uv run python -m evals.scenarios` after editing SCENARIOS."""
+    from evals.scenarios import SCENARIOS_JSON, scenarios_as_json
+
+    assert SCENARIOS_JSON.read_text() == scenarios_as_json()
+
+
+def test_tool_call_markup_in_a_rationale_fails() -> None:
+    passed, grades = _grade(
+        "cabin-drift",
+        _investigation(
+            "send_diagnostic_reset",
+            "Cabin probe at 5.2 C while the controller reads 2.0 C, matching KB-003.</parameter>\n</invoke>",
+        ),
+    )
+    assert not passed
+    assert grades["rationale free of tool-call markup"].detail == "found </parameter"
+
+
+def test_autonomous_scenario_detects_then_investigates() -> None:
+    client = _investigation(
+        "schedule_service_visit", "KB-001 and KB-002 disagree; level fell from 96% to 79% while temp hit 115 C."
+    )
+    passed, _ = _grade("autonomous-leak", client)
+    assert passed
+    opening = client.messages.calls[0]["messages"][0]["content"]
+    assert "rule-based telemetry detector" in opening
+    assert "coolant_temp_c >= 105" in opening

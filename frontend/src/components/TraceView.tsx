@@ -22,6 +22,7 @@ const NAME_LABELS: Record<string, string> = {
   execute_fix: "Executed fix",
   route_to_support: "Routed to human support",
   execution_failed: "Execution failed",
+  execution_refused: "Execution refused by a guardrail",
 };
 
 const OUTCOME_LABELS: Record<string, string> = {

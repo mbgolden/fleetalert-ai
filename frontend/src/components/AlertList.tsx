@@ -39,8 +39,9 @@ export default function AlertList() {
           <li>A rejected fix triggers one more RAG-backed retry before escalating to a human</li>
           <li>Every model call, capability call and guardrail decision is traced as a structured span</li>
           <li>
-            Two entry points, one engine: the web UI, and an inbound email that arrives every 4
-            hours (or now, via <em>Simulate inbound email</em>)
+            Three entry points, one engine: the web UI, an inbound email every 4 hours, and a
+            telemetry detector that raises its own alerts (try <em>Simulate inbound email</em> or{" "}
+            <em>Run telemetry detector</em>)
           </li>
         </ul>
         {usage && (
@@ -50,6 +51,9 @@ export default function AlertList() {
             {usage.exhausted && " (used up, resets at 00:00 UTC)"}
           </p>
         )}
+        <Link to="/evals" className="overview-link overview-link-secondary">
+          See the eval results &rarr;
+        </Link>
         <a
           href="https://10finger.dev/project/fleetalert-ai"
           target="_blank"
@@ -74,6 +78,9 @@ export default function AlertList() {
                 <span className="alert-type">
                   {alert.alert_type.replaceAll("_", " ")}
                   {alert.source === "email" && <span className="entry-chip entry-email card-chip">via email</span>}
+                  {alert.source === "autonomous" && (
+                    <span className="entry-chip entry-autonomous card-chip">autonomous</span>
+                  )}
                 </span>
               </span>
               <span className={`status-pill status-${alert.status}`}>

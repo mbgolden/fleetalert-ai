@@ -19,6 +19,7 @@ import boto3
 from fleetalert import budget, repositories
 from fleetalert.agent.guardrails import GuardrailViolation
 from fleetalert.agent.loop import confirm_fix, reject_fix
+from fleetalert.autonomous import run_detector
 from fleetalert.email_intake import deliver_inbound_email
 from fleetalert.logging_config import alert_logger, configure_logging
 from fleetalert.seed_data import reseed_demo_data
@@ -60,6 +61,10 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
                 return _json(202, result)
             return _json(429 if result.get("budget_exhausted") else 409, result)
 
+        if route_key == "POST /demo/detect":
+            detected = run_detector(start_investigation, trigger="button")
+            return _json(_detector_status(detected), detected)
+
         if route_key == "GET /demo/usage":
             return _json(200, budget.usage())
 
@@ -77,7 +82,8 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
 
 
 def _list_alerts_with_machine_info() -> list[dict[str, Any]]:
-    alerts = repositories.list_alerts()
+    # A DynamoDB scan returns items in no particular order; keep the list stable.
+    alerts = sorted(repositories.list_alerts(), key=lambda a: str(a["alert_id"]))
     for alert in alerts:
         machine = repositories.get_machine(alert["machine_id"])
         if machine is not None:
@@ -97,6 +103,16 @@ def _start_investigation(alert_id: str) -> dict[str, Any]:
     return _json(202, {"alert_id": alert_id, "status": "investigation_started"})
 
 
+def _detector_status(result: dict[str, Any]) -> int:
+    if result.get("started"):
+        return 202
+    if result.get("budget_exhausted"):
+        return 429
+    if result.get("reason"):
+        return 409  # the detector's last alert is still being handled
+    return 200  # readings were normal: nothing to investigate
+
+
 def _get_status(alert_id: str) -> dict[str, Any]:
     alert = repositories.get_alert(alert_id)
     if alert is None:
@@ -112,6 +128,7 @@ def _get_status(alert_id: str) -> dict[str, Any]:
             "confirmation_token": alert.get("confirmation_token"),
             "source": alert.get("source", "monitoring"),
             "inbound_email": alert.get("inbound_email"),
+            "detection": alert.get("detection"),
         },
     )
 

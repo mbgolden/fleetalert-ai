@@ -53,6 +53,21 @@ SEED_MACHINES: list[dict[str, Any]] = [
             }
         ],
     },
+    {
+        # No seeded alerts or telemetry: the truck the autonomous detector
+        # watches (fleetalert.autonomous), with readings generated live.
+        "machine_id": "M-1004",
+        "machine_type": "diesel_engine",
+        "org_id": "org-demo",
+        "name": "Truck 31 - Engine",
+        "service_history": [
+            {
+                "event_id": "SVC-1004-1",
+                "date": "2026-07-20",
+                "description": "Scheduled 60k-mile service: oil change, coolant top-up, belts inspected.",
+            }
+        ],
+    },
 ]
 
 SEED_KNOWLEDGE_BASE: list[dict[str, Any]] = [

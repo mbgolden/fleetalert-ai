@@ -11,6 +11,7 @@ import {
   rejectFix,
   startInvestigation,
 } from "../api";
+import DetectionCard from "./DetectionCard";
 import InboundEmailCard from "./InboundEmailCard";
 import TraceView from "./TraceView";
 
@@ -26,7 +27,7 @@ const STALLED_AFTER_S = 45;
 // Plain-English version of the latest span, shown while work is in flight so
 // the visitor can see what is happening right now.
 const ACTIVITY_LABELS: Record<string, string> = {
-  queued: "Email received, starting the investigation",
+  queued: "Queued, starting the investigation",
   investigation_started: "Starting the investigation",
   model_call: "Claude is deciding what to check next",
   "guardrail.whitelist": "Checking the action whitelist",
@@ -185,6 +186,9 @@ export default function AlertDetail() {
       <h1>
         {alertId}
         {status?.source === "email" && <span className="entry-chip entry-email title-chip">via email</span>}
+        {status?.source === "autonomous" && (
+          <span className="entry-chip entry-autonomous title-chip">autonomous</span>
+        )}
       </h1>
       {notice && <p className="notice">{notice}</p>}
       {error && <p className="error">{error}</p>}
@@ -197,6 +201,7 @@ export default function AlertDetail() {
       )}
 
       {status?.inbound_email && <InboundEmailCard email={status.inbound_email} />}
+      {status?.detection && <DetectionCard detection={status.detection} />}
 
       <h2>Investigation trace</h2>
       <TraceView spans={spans} working={working} />

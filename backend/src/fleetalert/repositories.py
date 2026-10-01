@@ -142,6 +142,16 @@ def put_telemetry_readings(readings: list[dict[str, Any]]) -> None:
             batch.put_item(Item=_dynamo_safe(reading))
 
 
+def clear_telemetry(machine_id: str) -> None:
+    """Deletes every reading for a machine. Only for the detector's own
+    truck (fleetalert.autonomous), whose readings are regenerated each run."""
+    table = get_dynamodb_resource().Table(TELEMETRY_TABLE)
+    readings = _query_all(table, KeyConditionExpression=Key("machine_id").eq(machine_id))
+    with table.batch_writer() as batch:
+        for reading in readings:
+            batch.delete_item(Key={"machine_id": machine_id, "timestamp": reading["timestamp"]})
+
+
 def get_telemetry_snapshot(machine_id: str, start: str, end: str) -> list[dict[str, Any]]:
     table = get_dynamodb_resource().Table(TELEMETRY_TABLE)
     resp = table.query(

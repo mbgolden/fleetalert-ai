@@ -114,6 +114,7 @@ def test_get_status_route(dynamodb_tables: None) -> None:
         "confirmation_token": "tok-abc",
         "source": "monitoring",
         "inbound_email": None,
+        "detection": None,
     }
 
 

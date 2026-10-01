@@ -8,7 +8,9 @@ reviewer can challenge the expectation itself, not just the result.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
+from pathlib import Path
 
 # The label a round gets when it ends in routed_to_support instead of a
 # proposal awaiting confirmation.
@@ -43,6 +45,9 @@ class Scenario:
     # Which entry point starts the investigation. The email scenario's
     # alert carries the inbound email, which the loop adds to the prompt.
     entry_point: str = "web"
+    # A telemetry profile for the autonomous detector to generate and detect
+    # before the investigation (its alert doesn't exist until then).
+    detector_profile: str | None = None
 
 
 SCENARIOS: tuple[Scenario, ...] = (
@@ -136,6 +141,21 @@ SCENARIOS: tuple[Scenario, ...] = (
         requires_conflict_note=True,
         entry_point="email",
     ),
+    Scenario(
+        scenario_id="autonomous-leak",
+        alert_id="ALERT-1007",
+        summary="The telemetry detector catches a coolant leak on its own",
+        why=(
+            "No human raised this one: the detector's coolant_temp_c >= 105 rule trips on "
+            "several readings. Behind it, temperature climbs as coolant level falls "
+            "96% -> 79% and stays low: KB-002's genuine coolant loss, not KB-001's glitch "
+            "-> schedule_service_visit, with the KB conflict noted."
+        ),
+        rounds=(RoundExpectation(frozenset({"schedule_service_visit"})),),
+        requires_conflict_note=True,
+        entry_point="autonomous",
+        detector_profile="coolant_leak",
+    ),
 )
 
 
@@ -147,3 +167,42 @@ def by_id(scenario_ids: list[str] | None) -> list[Scenario]:
     if unknown:
         raise ValueError(f"Unknown scenario(s): {', '.join(unknown)}. Known: {', '.join(known)}")
     return [known[sid] for sid in scenario_ids]
+
+
+SCENARIOS_JSON = Path(__file__).parent / "scenarios.json"
+
+
+def scenarios_as_json() -> str:
+    """The scenario definitions as JSON, for the demo site's Evals page.
+
+    Regenerate with `uv run python -m evals.scenarios` after editing
+    SCENARIOS; a test fails if the committed file drifts.
+    """
+    return (
+        json.dumps(
+            [
+                {
+                    "scenario_id": s.scenario_id,
+                    "alert_id": s.alert_id,
+                    "summary": s.summary,
+                    "why": s.why,
+                    "entry_point": s.entry_point,
+                    "detector_profile": s.detector_profile,
+                    "rounds": [
+                        {"acceptable": sorted(r.acceptable), "reject_with": r.reject_with} for r in s.rounds
+                    ],
+                    "requires_conflict_note": s.requires_conflict_note,
+                    "max_confidence": s.max_confidence,
+                    "max_cost_usd_per_round": s.max_cost_usd_per_round,
+                }
+                for s in SCENARIOS
+            ],
+            indent=2,
+        )
+        + "\n"
+    )
+
+
+if __name__ == "__main__":
+    SCENARIOS_JSON.write_text(scenarios_as_json())
+    print(f"wrote {SCENARIOS_JSON}")

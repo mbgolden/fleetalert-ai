@@ -5,6 +5,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import App from "./App";
 import AlertDetail from "./components/AlertDetail";
 import AlertList from "./components/AlertList";
+import EvalsPage from "./components/EvalsPage";
 import "./styles.css";
 
 const rootElement = document.getElementById("root");
@@ -19,6 +20,7 @@ ReactDOM.createRoot(rootElement).render(
         <Route path="/" element={<App />}>
           <Route index element={<AlertList />} />
           <Route path="alerts/:alertId" element={<AlertDetail />} />
+          <Route path="evals" element={<EvalsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

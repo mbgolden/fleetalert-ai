@@ -171,6 +171,9 @@ def run_investigation(
     email = alert.get("inbound_email")
     if email:
         user_message += _email_context(email)
+    detection = alert.get("detection")
+    if detection:
+        user_message += _detection_context(detection)
     if rejected_fixes:
         rejected_summary = "; ".join(
             f"{r['fix_id']!r} (reason: {r.get('reason') or 'not given'})" for r in rejected_fixes
@@ -636,6 +639,18 @@ def _email_context(email: dict[str, Any]) -> str:
         f"Subject: {email.get('subject', '')}\n\n"
         f"{email.get('body', '')}\n"
         "</inbound_email>"
+    )
+
+
+def _detection_context(detection: dict[str, Any]) -> str:
+    """What the rule-based detector saw. Facts only: which rule tripped and
+    how often, never a guess at the cause (that's the model's job)."""
+    return (
+        "\n\nThis alert was raised automatically by a rule-based telemetry "
+        f"detector: the rule {detection.get('rule')} tripped on "
+        f"{detection.get('tripped_readings')} of {detection.get('total_readings')} "
+        f"readings (peak {detection.get('peak_value')}). The detector only "
+        "checks thresholds; verify what actually happened from the telemetry."
     )
 
 

@@ -201,6 +201,17 @@ resource "aws_cloudwatch_dashboard" "main" {
         }
       },
       {
+        type = "metric", x = 0, y = 26, width = 12, height = 6
+        properties = {
+          title   = "Telemetry detector runs, by result"
+          region  = var.aws_region
+          view    = "timeSeries"
+          stacked = true
+          period  = 3600
+          metrics = [[{ expression = "SEARCH('{FleetAlert,Result} MetricName=\"DetectorRuns\"', 'Sum', 3600)", id = "e1" }]]
+        }
+      },
+      {
         type = "metric", x = 0, y = 20, width = 12, height = 6
         properties = {
           title  = "Step Functions executions"

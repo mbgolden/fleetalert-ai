@@ -20,7 +20,24 @@ export interface Alert {
   severity: "low" | "medium" | "high";
   status: AlertStatus;
   created_at: string;
-  source?: "monitoring" | "email";
+  source?: AlertSource;
+}
+
+export type AlertSource = "monitoring" | "email" | "autonomous";
+
+// What the rule-based telemetry detector saw (ADR-0020).
+export interface Detection {
+  rule: string;
+  alert_type: string;
+  signal: string;
+  threshold: number;
+  severity: string;
+  tripped_readings: number;
+  total_readings: number;
+  peak_value: number | string;
+  first_tripped_at: string;
+  detected_at: string;
+  trigger: string;
 }
 
 // The seeded inbound email behind an email-raised alert (ADR-0016).
@@ -38,8 +55,9 @@ export interface AlertStatusResponse {
   confidence: string | null;
   root_cause_summary: string | null;
   confirmation_token: string | null;
-  source: "monitoring" | "email";
+  source: AlertSource;
   inbound_email: InboundEmail | null;
+  detection: Detection | null;
 }
 
 export type SpanKind =
@@ -163,6 +181,34 @@ export async function simulateInboundEmail(): Promise<EmailDelivery> {
       return {
         started: false,
         alert_id: "ALERT-1006",
+        reason: err.message,
+        budget_exhausted: err.status === 429,
+      };
+    }
+    throw err;
+  }
+}
+
+export interface DetectorRun {
+  alert_raised: boolean;
+  started?: boolean;
+  alert_id?: string;
+  reason?: string;
+  budget_exhausted?: boolean;
+  detection?: Detection;
+}
+
+// 202 started, 200 normal readings (nothing raised), 409 the last alert is
+// still being handled, 429 budget used up. Only real failures throw.
+export async function runDetector(): Promise<DetectorRun> {
+  try {
+    return await request<DetectorRun>("/demo/detect", { method: "POST" });
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 409 || err.status === 429)) {
+      return {
+        alert_raised: err.status === 429,
+        started: false,
+        alert_id: "ALERT-1007",
         reason: err.message,
         budget_exhausted: err.status === 429,
       };

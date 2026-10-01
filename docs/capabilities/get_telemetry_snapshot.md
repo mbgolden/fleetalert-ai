@@ -20,12 +20,19 @@ in time order. The signal names depend on the machine type:
   `controller_reading_c` (the unit controller's own return-air sensor),
   `setpoint_c`, `compressor_current_a` and `compressor_state`.
 
+Readings the autonomous detector generates for Truck 31 (M-1004) carry
+an `expires_at` for DynamoDB TTL. Storage-only fields like that are
+stripped before the model sees them; only `machine_id`, `timestamp` and
+`signal_readings` are returned (ADR-0020).
+
 **Guarantees**
 - **Scoped to the alert's machine.** The machine comes from the
   investigation context, never from model input (`machine_id` is not an
   accepted field), so the model can't read another machine's telemetry.
 - **Deterministic for the demo.** Seeded readings are generated without
-  randomness, so evals see the same evidence every run (ADR-0010).
+  randomness, so evals see the same evidence every run (ADR-0010). The
+  detector's live readings are deterministic too, for a given profile and
+  time. Evals pin the time.
 
 **Known failure modes**
 - **Empty window.** An empty `readings` list is a valid answer ("no data"),
