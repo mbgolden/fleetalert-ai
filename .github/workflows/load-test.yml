@@ -47,9 +47,13 @@ jobs:
           KEEP_DATA: ${{ inputs.keep_data }}
         run: |
           set -euo pipefail
+          # Short synchronous calls only (report, cleanup): both are safe to
+          # retry. The generator is started asynchronously below, because a
+          # long synchronous invocation lost its connection, timed out and
+          # was retried by the CLI, re-running the whole load (ADR-0023).
           invoke() {
             meta=$(aws lambda invoke --function-name "$FUNCTION" \
-              --cli-binary-format raw-in-base64-out --cli-read-timeout 900 \
+              --cli-binary-format raw-in-base64-out --cli-read-timeout 300 \
               --payload "$1" "$2")
             if echo "$meta" | jq -e '.FunctionError' > /dev/null; then
               echo "::error::Lambda error: $(cat "$2")"
@@ -57,6 +61,8 @@ jobs:
             fi
           }
           mkdir -p docs/load-tests
+          invoke '{"action":"cleanup_all"}' leftovers.json
+          echo "Removed leftovers from earlier runs: $(cat leftovers.json)"
           stamp=$(date -u +%Y-%m-%dT%H%M)
           echo "## Load test ($stamp)" >> "$GITHUB_STEP_SUMMARY"
           IFS=',' read -ra LEVELS <<< "$LEVELS_INPUT"
@@ -69,20 +75,24 @@ jobs:
             fi
             label="${GITHUB_RUN_ID}-${rate}"
             echo "::group::$rate/hour for $minutes minutes ($label)"
-            invoke "$(jq -nc --arg l "$label" --argjson r "$rate" --argjson m "$minutes" \
-              '{action:"run", label:$l, rate_per_hour:$r, minutes:$m}')" run.json
-            cat run.json
-            # Wait for the queue to drain: up to 15 minutes.
-            for i in $(seq 1 30); do
+            aws lambda invoke --function-name "$FUNCTION" --invocation-type Event \
+              --cli-binary-format raw-in-base64-out \
+              --payload "$(jq -nc --arg l "$label" --argjson r "$rate" --argjson m "$minutes" \
+                '{action:"run", label:$l, rate_per_hour:$r, minutes:$m}')" /dev/null
+            # Wait for generation to finish and the queue to drain: the run's
+            # own length plus up to 15 minutes.
+            polls=$(( (${minutes%.*} + 15) * 3 ))
+            for i in $(seq 1 "$polls"); do
+              sleep 20
               invoke "$(jq -nc --arg l "$label" '{action:"report", label:$l}')" report.json
+              generation=$(jq -r '.generation' report.json)
               pending=$(jq '.pending' report.json)
-              echo "poll $i: pending $pending"
-              [ "$pending" = "0" ] && break
-              sleep 30
+              echo "poll $i: generation $generation, $(jq '.alerts' report.json) alerts, $pending pending"
+              [ "$generation" = "done" ] && [ "$pending" = "0" ] && break
             done
-            jq -s '.[0] + {run: .[1]}' report.json run.json > "docs/load-tests/${stamp}-${rate}.json"
+            cp report.json "docs/load-tests/${stamp}-${rate}.json"
             jq -r '.markdown' report.json >> "$GITHUB_STEP_SUMMARY"
-            jq -r '"Started \(.started) of \(.requested) (start errors: \(.start_errors | tostring)), achieved \(.achieved_rate_per_hour)/hour\n"' run.json >> "$GITHUB_STEP_SUMMARY"
+            jq -r '"Generator: started \(.run.started) of \(.run.requested) (start errors: \(.run.start_errors | tostring)), achieved \(.run.achieved_rate_per_hour)/hour\n"' report.json >> "$GITHUB_STEP_SUMMARY"
             if [ "$KEEP_DATA" != "true" ]; then
               invoke "$(jq -nc --arg l "$label" '{action:"cleanup", label:$l}')" cleanup.json
               cat cleanup.json

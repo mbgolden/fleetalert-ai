@@ -63,5 +63,43 @@ alerts once a scan crossed 1 MB. Scans now follow every page.
   model time each (ADR-0021), which affects concurrency, not throughput
   limits elsewhere. The report keeps the two apart.
 
+## First run (2026-10-01): two findings before any numbers
+The first run never got past level 1, and the workflow failed after 45
+minutes with an AWS CLI error. The investigations themselves all
+completed (83 of 83, routed to support), but each one had run three times,
+exactly 15 minutes apart.
+
+**1. A client retry re-ran a non-idempotent operation.**
+- The workflow invoked the generator synchronously and waited for its
+  reply. The run lasted about 5 minutes, during which the connection
+  carried no traffic.
+- The connection was most likely dropped somewhere along the way: the
+  generator had finished its starts on time, but the CLI never received
+  the reply.
+- The CLI waited out its 15-minute read timeout and retried the
+  invocation, so the whole load was generated again. That happened three
+  times in total, then the CLI exited with 255.
+- **Fixes:**
+  - The workflow now starts the generator asynchronously, and Lambda's own
+    async retries are set to zero.
+  - The generator claims its label with a conditional write before doing
+    anything, so a second start of the same run is refused.
+  - The workflow polls a short, safely-retryable `report` call until the
+    generator records itself done and the queue has drained.
+  - Leftovers from failed runs are cleaned up at the start of every run.
+
+**2. Every DynamoDB call opened a new connection.**
+- The traces gave a "before" measurement even though the run failed. 249
+  completed rounds with no model call took **p50 2,317 ms, p95 3,002 ms**.
+  Single telemetry and KB steps took about 160 ms each, roughly 80 ms per
+  DynamoDB call, where single-digit milliseconds is normal.
+- `get_dynamodb_resource()` built a new boto3 resource on every call, so
+  every request (each span write, each query) set up a fresh HTTPS
+  connection, on a 256 MB Lambda with a fraction of a CPU.
+- **Fix:** the resource and the Step Functions client are now cached per
+  Lambda container, so connections are reused. It's the only performance
+  change in the rerun, so the difference is attributable to it.
+- Locally, the same change cut the backend test suite from 36 s to 23 s.
+
 ## Results
-_Filled in from `docs/load-tests/` after the first runs._
+_Filled in from `docs/load-tests/` after the rerun._

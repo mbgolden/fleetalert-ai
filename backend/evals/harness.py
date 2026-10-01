@@ -21,6 +21,7 @@ from moto import mock_aws
 from evals.scenarios import ROUTED, Scenario
 from fleetalert import autonomous, repositories
 from fleetalert.agent.loop import reject_fix, run_investigation
+from fleetalert.db import get_dynamodb_resource
 from fleetalert.seed_data import reseed_demo_data
 from fleetalert.tracing import Stopwatch
 
@@ -68,10 +69,12 @@ def isolated_demo_data() -> Iterator[None]:
     for var in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"):
         os.environ.setdefault(var, "testing")
     os.environ.setdefault("AWS_DEFAULT_REGION", "us-east-1")
+    get_dynamodb_resource.cache_clear()
     with mock_aws():
         repositories.create_tables()
         reseed_demo_data()
         yield
+    get_dynamodb_resource.cache_clear()
 
 
 def run_trial(scenario: Scenario, client_for_round: ClientFactory, *, model: str) -> TrialRecord:

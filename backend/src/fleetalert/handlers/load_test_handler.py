@@ -47,7 +47,10 @@ def _cloudwatch(first: str, last: str) -> dict[str, float]:
 
 
 def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
-    action, label = event["action"], str(event["label"])
+    action = event["action"]
+    if action == "cleanup_all":
+        return loadtest.cleanup(None)
+    label = str(event["label"])
     if action == "run":
         return loadtest.run(
             label, rate_per_hour=int(event["rate_per_hour"]), minutes=float(event["minutes"]), start=_start
