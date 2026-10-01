@@ -39,7 +39,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="evals.run")
     parser.add_argument("tier", choices=["live", "replay"])
     parser.add_argument("--scenario", action="append", help="limit to these scenario ids (repeatable)")
-    parser.add_argument("--model", default=None, help="live tier model (default: FLEETALERT_MODEL or claude-sonnet-5)")
+    parser.add_argument("--model", default=None, help="live tier model (default: FLEETALERT_MODEL or the deployed default)")
     parser.add_argument("--trials", type=int, default=3)
     parser.add_argument("--record", action="store_true", help="save cassettes, baseline and results")
     parser.add_argument("--summary", type=Path, help="append the markdown report here (e.g. $GITHUB_STEP_SUMMARY)")

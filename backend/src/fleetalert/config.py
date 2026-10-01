@@ -32,7 +32,8 @@ def aws_region() -> str:
 
 
 def anthropic_model() -> str:
-    return os.environ.get("FLEETALERT_MODEL", "claude-sonnet-5")
+    # Sonnet 5.5 since ADR-0021 (chosen on eval results, not by default).
+    return os.environ.get("FLEETALERT_MODEL", "claude-sonnet-5-5")
 
 
 def anthropic_secret_arn() -> str | None:

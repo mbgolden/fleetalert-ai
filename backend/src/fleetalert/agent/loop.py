@@ -230,6 +230,13 @@ def run_investigation(
             },
         )
 
+        if getattr(response, "stop_reason", None) == "refusal":
+            # The model declined to continue. Nudging it would only repeat
+            # the refusal up to max_iterations; a person should look instead.
+            log.warning("iteration %d/%d: model refused, routing to support", iteration, max_iterations)
+            outcome = _route_to_support(tracer, alert_id, reason="model_refused")
+            break
+
         if not tool_use_blocks:
             log.info("iteration %d/%d: model returned no tool call, nudging it to continue", iteration, max_iterations)
             messages.append({"role": "user", "content": _CONTINUE_NUDGE})
