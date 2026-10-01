@@ -3,34 +3,38 @@
 Known follow-ups, each with the evidence that raised it. When an item is
 done, remove it and point to the commit or ADR in the PR.
 
-## Split confidence into diagnosis and action
-Raised 2026-09-30 by the eval harness (ADR-0012).
+## Parked
 
-`compressor-no-kb` has no KB entry, so the calibration check expects
-confidence of 0.7 or below. Sonnet 5 scored 0.75-0.82 in all three trials
-of the 12:51 recorded run, even though the system prompt asks for 0.6 or
-below. The rationales explain why: Claude is fairly sure a technician
-should look at a faulted compressor (the action), and unsure of the root
-cause (the diagnosis). One number can't hold both, so the check is
-measuring the wrong thing.
+Items that were investigated and deliberately not built. Each one names the
+evidence that would bring it back.
 
-Update, 2026-09-30 19:26 recorded run: after the KB-conflict prompt change
-(ADR-0016), `compressor-no-kb` came in at 0.55-0.60 in all three trials,
-and the warning cleared. The symptom is gone for now, but the conceptual
-problem remains: the proposal UI still shows one "confidence" for two
-different questions. Lower priority, still worth doing.
+### Split confidence into diagnosis and action
+Raised 2026-09-30 by the eval harness (ADR-0012). Parked 2026-10-01.
 
-Update, 2026-10-01 00:11 recorded run: the warning came back in 2 of 3
-`compressor-no-kb` trials. The prompt line moved the average without fixing
-the underlying ambiguity, which is more evidence for the split.
+**The problem.** `compressor-no-kb` has no KB entry, so the calibration
+check expects confidence of 0.7 or below. On Sonnet 5 it scored above that
+in most trials (0.75-0.82), across three recorded runs. A prompt line moved
+the average but didn't hold. The rationales explained why: Claude was fairly
+sure a technician should look at a faulted compressor (the action), and
+unsure of the root cause (the diagnosis). One number was holding two
+answers.
 
-- Replace `confidence` on `propose_fix` with `diagnosis_confidence` (how
-  sure the root cause is right) and `action_confidence` (how sure this fix
-  is the right next step).
-- Calibration grader: without KB support, `diagnosis_confidence` ≤ 0.6.
-  `action_confidence` can stay high.
-- Show both in the UI's proposed-fix box and trace.
-- Update `request_confirmation`, `docs/capabilities/propose_fix.md`, the
-  tests and the evals, and re-record the cassettes.
-- Consider doing this with the Sonnet 5.5 comparison run, so both models
-  are measured on the new contract.
+**Why it's parked.** On Sonnet 5.5, the deployed model since ADR-0021, the
+warning didn't fire: 0.55-0.60 in all three trials, with rationales that
+say outright that no KB entry documents the fix. The split would change a
+capability contract, the confirmation flow, the UI and every recording, to
+fix a symptom the current model doesn't show. That's real cost and risk
+with no measured benefit.
+
+**What would bring it back:**
+- The weekly live eval shows the `compressor-no-kb` calibration warning in
+  2 or more trials of a run.
+- A model change brings it back.
+- A real user of the proposal box needs to tell "is this the right
+  diagnosis" apart from "is this the right next step".
+
+**The design, if it comes back.** Replace `confidence` on `propose_fix` with
+`diagnosis_confidence` and `action_confidence`. Grade calibration on
+`diagnosis_confidence` (0.6 or below without KB support), and show both in
+the proposal box and the trace. Update `request_confirmation`, the contract
+doc, the tests and the evals, then re-record.

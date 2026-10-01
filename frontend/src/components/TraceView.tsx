@@ -32,6 +32,12 @@ const OUTCOME_LABELS: Record<string, string> = {
   failed: "failed",
 };
 
+// Routing that follows a proposal, shown after the round's outcome.
+const LATE_ROUTING_LABELS: Record<string, string> = {
+  confirmation_timed_out: "no answer in 2 h, routed to support",
+  rejection_budget_exhausted: "routed to support",
+};
+
 const STATUS_ICONS: Record<string, string> = {
   success: "✓",
   failure: "✕",
@@ -181,7 +187,7 @@ function SpanRow({ span, nested }: { span: Span; nested?: Span[] }) {
   );
 }
 
-function RoundCard({ round, index, live }: { round: Round; index: number; live: boolean }) {
+function RoundCard({ round, live }: { round: Round; live: boolean }) {
   const modelCalls = round.spans.filter((s) => s.kind === "model_call");
   const modelCallIds = new Set(modelCalls.map((s) => s.span_id));
   const children = new Map<string, Span[]>();
@@ -194,10 +200,12 @@ function RoundCard({ round, index, live }: { round: Round; index: number; live: 
     }
   }
 
-  // Rounds on one alert can come from different entry points (web, email),
-  // so only call a round "after rejection" when it actually followed one.
+  // Rounds are named by what started them and when, not numbered: older
+  // rounds on a recurring alert get trimmed (and each new email or detector
+  // run starts the alert afresh), so a count would restart or mislead.
   const started = round.spans.find((s) => s.name === "investigation_started");
   const afterRejection = (num(started?.input?.rejected_fixes) ?? 0) > 0;
+  const startedAt = started?.timestamp ?? round.root?.timestamp ?? round.spans[0]?.timestamp;
   const rootAttrs = round.root?.attributes ?? {};
   const outcome = round.root ? String(round.root.output?.outcome ?? "") : "";
   const cost =
@@ -205,20 +213,32 @@ function RoundCard({ round, index, live }: { round: Round; index: number; live: 
     formatCost(modelCalls.reduce((sum, s) => sum + (num(s.attributes?.estimated_cost_usd) ?? 0), 0));
   const latency = formatLatency(round.root?.latency_ms);
   // What happened after the round's own outcome, in this same trace.
-  const followUps = round.spans
-    .filter(
-      (s) =>
-        s.status === "success" &&
-        (s.kind === "human_action" || s.name === "execute_fix"),
-    )
-    .map((s) => (s.name === "reject" ? "rejected" : s.name === "confirm" ? "confirmed" : "fix executed"));
+  const followUps = round.spans.flatMap((s) => {
+    if (s.status !== "success") return [];
+    if (s.name === "reject") return ["rejected"];
+    if (s.name === "confirm") return ["confirmed"];
+    if (s.name === "execute_fix") return ["fix executed"];
+    // Routing that happened after the proposal, not the round's own outcome.
+    const reason = String(s.output?.reason ?? "");
+    if (s.name === "route_to_support" && reason in LATE_ROUTING_LABELS) return [LATE_ROUTING_LABELS[reason]];
+    return [];
+  });
 
   return (
     <section className="round-card">
       <header className="round-header">
-        <span className="round-title">Round {index + 1}</span>
+        <span className="round-title">{afterRejection ? "Retry after rejection" : "Investigation"}</span>
         <span className={`entry-chip entry-${round.entryPoint}`}>{round.entryPoint}</span>
-        {afterRejection && <span className="round-note">after rejection</span>}
+        {startedAt && (
+          <time className="round-note" dateTime={startedAt}>
+            {new Date(startedAt).toLocaleString([], {
+              month: "short",
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+            })}
+          </time>
+        )}
         <span className="round-outcome">
           {round.root ? (OUTCOME_LABELS[outcome] ?? outcome) : live ? "in progress…" : "incomplete"}
           {followUps.map((f) => ` → ${f}`).join("")}
@@ -244,7 +264,7 @@ export default function TraceView({ spans, working }: { spans: Span[]; working: 
   return (
     <div className="trace-view">
       {rounds.map((round, i) => (
-        <RoundCard key={round.traceId} round={round} index={i} live={working && i === rounds.length - 1} />
+        <RoundCard key={round.traceId} round={round} live={working && i === rounds.length - 1} />
       ))}
     </div>
   );
