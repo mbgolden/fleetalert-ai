@@ -1,0 +1,62 @@
+{
+  "label": "36925239186-queue-36000-2000",
+  "generation": "done",
+  "run": {
+    "minutes": 5.0,
+    "rate_per_hour": 36000.0,
+    "model_latency_ms": 2000.0,
+    "requested": 3000.0,
+    "start_errors": {},
+    "label": "36925239186-queue-36000-2000",
+    "elapsed_s": 300.0,
+    "started": 3000.0,
+    "achieved_rate_per_hour": 36000.0
+  },
+  "alerts": 3000,
+  "completed": 3000,
+  "failed": 0,
+  "pending": 0,
+  "outcomes": {
+    "routed_to_support": 3000
+  },
+  "throughput_per_hour": 24364,
+  "queue_ms": {
+    "p50": 66695,
+    "p95": 132292,
+    "p99": 142772,
+    "max": 147129
+  },
+  "processing_ms": {
+    "p50": 6340,
+    "p95": 6400,
+    "p99": 6880,
+    "max": 7340
+  },
+  "end_to_end_ms": {
+    "p50": 73035,
+    "p95": 138634,
+    "p99": 149112,
+    "max": 153529
+  },
+  "window": {
+    "first_start": "2026-10-01T21:02:39.861309+00:00",
+    "last_completion": "2026-10-01T21:10:03.132210+00:00"
+  },
+  "aws": {
+    "worker_throttles": 0.0,
+    "worker_peak_concurrency": 51.0,
+    "agent_loop_throttles": 0.0,
+    "agent_loop_peak_concurrency": 0.0,
+    "api_throttles": 0.0,
+    "queue_oldest_message_s": 135.0,
+    "queue_peak_depth": 865.0,
+    "dead_letters": 0.0,
+    "sfn_executions_failed": 0.0
+  },
+  "markdown": "### Load test `36925239186-queue-36000-2000`\n\n3,000 of 3,000 rounds completed, 0 failed, 0 still pending · simulated model latency 2,000 ms per call · throughput 24,364/hour\n\n| Timing (ms) | p50 | p95 | p99 | max |\n|---|---|---|---|---|\n| Queue (start → round begins) | 66,695 | 132,292 | 142,772 | 147,129 |\n| Processing (the round) | 6,340 | 6,400 | 6,880 | 7,340 |\n| End to end | 73,035 | 138,634 | 149,112 | 153,529 |\n\nOutcomes: routed_to_support ×3000\n\nAWS: worker_throttles 0, worker_peak_concurrency 51, agent_loop_throttles 0, agent_loop_peak_concurrency 0, api_throttles 0, queue_oldest_message_s 135, queue_peak_depth 865, dead_letters 0, sfn_executions_failed 0\n",
+  "path": "queue",
+  "api_probe": {
+    "ok": 45,
+    "errors": 0
+  }
+}
