@@ -1064,3 +1064,172 @@ button.detector-button:hover:not(:disabled) {
   color: var(--text-dim);
   font-size: 0.8rem;
 }
+
+.label-short {
+  display: none;
+}
+
+/* --- Phone layout ---
+   Chips and pills never break mid-label; on narrow screens the alert card
+   stacks (severity + status on top, the machine below) instead of squeezing
+   three columns into one row. */
+
+.entry-chip,
+.tier-chip,
+.status-chip,
+.status-pill,
+.severity-badge {
+  white-space: nowrap;
+}
+
+.card-chip {
+  display: inline-block;
+  vertical-align: 0.1em;
+}
+
+.confirm-reject-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.confirm-reject-controls button {
+  margin: 1rem 0 0;
+}
+
+@media (max-width: 560px) {
+  .app-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.9rem;
+    padding: 1rem;
+  }
+
+  /* Title and nav share one row; the tagline is on the alert list already. */
+  .header-brand {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.25rem 1rem;
+  }
+
+  .app-subtitle {
+    display: none;
+  }
+
+  .app-nav {
+    margin-top: 0;
+  }
+
+  .header-actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    overflow-x: visible;
+  }
+
+  .header-actions button {
+    width: 100%;
+    padding: 0.55rem 0.35rem;
+    font-size: 0.8rem;
+  }
+
+  .label-long {
+    display: none;
+  }
+
+  .label-short {
+    display: inline;
+  }
+
+  /* Each round already shows its timing; per-step clock times crowd the row. */
+  .span-time {
+    display: none;
+  }
+
+  .header-notice {
+    padding: 0.6rem 1rem;
+  }
+
+  .app-main {
+    padding: 1.25rem 1rem 2.5rem;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+  }
+
+  h2 {
+    font-size: 1.2rem;
+  }
+
+  .project-overview {
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .overview-link-secondary {
+    display: block;
+    margin: 0 0 0.5rem;
+  }
+
+  .alert-card {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      "severity status"
+      "body body";
+    align-items: center;
+    gap: 0.6rem 0.75rem;
+    padding: 0.9rem 1rem;
+  }
+
+  .alert-card .severity-badge {
+    grid-area: severity;
+    justify-self: start;
+  }
+
+  .alert-card .status-pill {
+    grid-area: status;
+    justify-self: end;
+  }
+
+  .alert-card-body {
+    grid-area: body;
+    min-width: 0;
+  }
+
+  .alert-card:hover {
+    transform: none;
+  }
+
+  .confirm-reject-controls button {
+    flex: 1 1 0;
+  }
+
+  .proposed-fix,
+  .inbound-email,
+  .detection-card {
+    padding: 1rem;
+  }
+
+  .round-card {
+    padding: 0.8rem 0.75rem 0.5rem;
+  }
+
+  .span-summary,
+  .span-text,
+  .span-payload {
+    margin-left: 0.25rem;
+  }
+
+  .span-children {
+    margin-left: 0.25rem;
+    padding-left: 0.6rem;
+  }
+
+  .title-chip {
+    margin-left: 0.5rem;
+  }
+}
