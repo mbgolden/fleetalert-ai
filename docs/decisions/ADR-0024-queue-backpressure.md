@@ -4,7 +4,8 @@
 Accepted. Supersedes
 [ADR-0006](ADR-0006-defer-backpressure-until-real-feed.md), which designed
 this and deferred it until there was a feed to design against. The results
-are below, filled in from the recorded rerun.
+are below, filled in from the recorded rerun. The worker cap was raised
+from 6 to 50 once the account limit went to 1,000 (see the last section).
 
 ## Context
 The load test (ADR-0023) pushed 7,200 investigations an hour, each holding
@@ -112,3 +113,26 @@ call. Report: `docs/load-tests/2026-10-01T1808-queue-7200-2000ms.json`.
    quota request, after which the worker cap can rise by an order of
    magnitude.
 2. Then the model provider's rate limits, which this same queue absorbs.
+
+## After the quota increase (2026-10-01): cap raised from 6 to 50
+The account's Lambda concurrency limit is now 1,000, so the first limit
+above is gone. The worker cap (`investigation_worker_concurrency`) goes
+from 6 to 50.
+
+**Why 50 and not 900:**
+- The cap no longer protects Lambda slots. 50 of 1,000 can't starve the
+  API or the web path.
+- It now bounds how many model calls run at once. In production each
+  worker holds an open request to the model provider, so the cap is the
+  control for the provider's rate limit, which is the next ceiling.
+- 50 workers at 6.4 s a round is about 28,000 investigations an hour.
+  That's four times the load that broke the direct path, and still low
+  enough to push past in a short load test.
+
+**What the rerun should show:**
+- 7,200/h, which built a 9-minute backlog at a cap of 6, needs about 13
+  workers. It should pass straight through with no backlog.
+- 36,000/h is above the new ceiling. The backlog should grow during the
+  burst and drain within a couple of minutes, with nothing lost.
+
+Results to follow from the recorded run.
