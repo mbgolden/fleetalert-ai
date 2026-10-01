@@ -84,6 +84,8 @@ export const RUN_NOTES: Record<string, string> = {
     "After the truncation fix: never run a cut-off tool call, shorter rationales, confidence before description.",
   "2026-09-30T1926":
     "After the prompt change to resolve KB conflicts from telemetry, with the email scenario added.",
+  "2026-10-01T0011":
+    "Added the autonomous-leak scenario and the tool-call-markup grader. All 24 passed; compressor-no-kb was overconfident again in 2 of 3 trials (a warning, not a gate).",
 };
 
 export interface Finding {
