@@ -88,7 +88,27 @@ def records_for_span(span: dict[str, Any]) -> list[str]:
         lines.append(_emf({}, [[]], {"ExecutionFailures": (1, "Count")}))
     elif kind == "lifecycle" and name == "execution_refused":
         lines.append(_emf({}, [[]], {"ExecutionRefusals": (1, "Count")}))
+
+    end_state = end_state_for_span(span)
+    if end_state:
+        lines.append(
+            _emf({"EndState": end_state, "EntryPoint": entry}, [[], ["EndState"]], {"AlertEndStates": (1, "Count")})
+        )
     return lines
+
+
+# Spans that end an alert's story. "failed" is left out: a failing task
+# records a failure span on every retry attempt, so the dashboard counts
+# failures from Step Functions' own ExecutionsFailed instead.
+END_STATES = {
+    ("capability", "execute_fix", "success"): "resolved",
+    ("decision", "route_to_support", "success"): "routed_to_support",
+    ("lifecycle", "execution_refused", "denied"): "refused",
+}
+
+
+def end_state_for_span(span: dict[str, Any]) -> str | None:
+    return END_STATES.get((str(span.get("kind")), str(span.get("name")), str(span.get("status"))))
 
 
 def emit_detector_run(result: str) -> None:

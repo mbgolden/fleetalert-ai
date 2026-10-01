@@ -1069,6 +1069,219 @@ button.detector-button:hover:not(:disabled) {
   display: none;
 }
 
+/* --- Activity feed --- */
+
+.activity-intro {
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+.activity-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.6rem;
+  margin: 1.25rem 0 1rem;
+}
+
+.activity-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.8rem 0.9rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--border);
+  border-radius: 10px;
+}
+
+.activity-stat.end-resolved {
+  border-top-color: var(--low);
+}
+
+.activity-stat.end-routed_to_support {
+  border-top-color: var(--medium);
+}
+
+.activity-stat.end-failed,
+.activity-stat.end-refused {
+  border-top-color: var(--high);
+}
+
+.activity-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.activity-stat-label {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+}
+
+.activity-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+button.filter-chip {
+  margin: 0;
+  padding: 0.35rem 0.8rem;
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  box-shadow: none;
+}
+
+button.filter-chip:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--text-dim);
+  transform: none;
+  filter: none;
+  box-shadow: none;
+}
+
+button.filter-chip.active {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: var(--accent);
+}
+
+.activity-empty {
+  color: var(--text-dim);
+}
+
+.activity-day-label {
+  margin: 1.5rem 0 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.activity-row {
+  display: grid;
+  grid-template-columns: 1.4rem 1fr auto;
+  gap: 0.2rem 0.6rem;
+  align-items: start;
+  padding: 0.7rem 0.9rem;
+  border-top: 1px solid var(--border);
+}
+
+.activity-row:first-child {
+  border-top: none;
+}
+
+.activity-icon {
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.tone-good .activity-icon {
+  color: var(--low);
+}
+
+.tone-warn .activity-icon {
+  color: var(--medium);
+}
+
+.tone-bad .activity-icon {
+  color: var(--high);
+}
+
+.tone-info .activity-icon {
+  color: var(--accent);
+}
+
+.tone-quiet .activity-icon,
+.tone-quiet .activity-title {
+  color: var(--text-dim);
+}
+
+.activity-body {
+  min-width: 0;
+}
+
+.activity-body p {
+  margin: 0;
+}
+
+.activity-title {
+  font-weight: 600;
+}
+
+.tone-quiet .activity-title {
+  font-weight: 500;
+}
+
+.activity-count {
+  margin-left: 0.4rem;
+  padding: 0 0.4rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.activity-detail {
+  margin-top: 0.1rem !important;
+  color: var(--text-dim);
+  font-size: 0.86rem;
+  overflow-wrap: anywhere;
+}
+
+.activity-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.6rem;
+  margin-top: 0.35rem !important;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+}
+
+.activity-alert {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.activity-alert:hover {
+  text-decoration: underline;
+}
+
+.activity-time {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  line-height: 1.6;
+}
+
+@media (max-width: 560px) {
+  .activity-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .activity-row {
+    padding: 0.65rem 0.75rem;
+  }
+}
+
 /* --- Phone layout ---
    Chips and pills never break mid-label; on narrow screens the alert card
    stacks (severity + status on top, the machine below) instead of squeezing

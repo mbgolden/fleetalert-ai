@@ -88,6 +88,7 @@ export default function App() {
             <NavLink to="/" end>
               Alerts
             </NavLink>
+            <NavLink to="/activity">Activity</NavLink>
             <NavLink to="/evals">Evals</NavLink>
           </nav>
         </div>
