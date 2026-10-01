@@ -1,0 +1,62 @@
+{
+  "label": "36904530447-queue-7200-2000",
+  "generation": "done",
+  "run": {
+    "minutes": 5.0,
+    "rate_per_hour": 7200.0,
+    "model_latency_ms": 2000.0,
+    "requested": 600.0,
+    "start_errors": {},
+    "label": "36904530447-queue-7200-2000",
+    "elapsed_s": 300.0,
+    "started": 600.0,
+    "achieved_rate_per_hour": 7200.0
+  },
+  "alerts": 600,
+  "completed": 600,
+  "failed": 0,
+  "pending": 0,
+  "outcomes": {
+    "routed_to_support": 600
+  },
+  "throughput_per_hour": 2510,
+  "queue_ms": {
+    "p50": 273949,
+    "p95": 529769,
+    "p99": 560275,
+    "max": 566358
+  },
+  "processing_ms": {
+    "p50": 6360,
+    "p95": 6380,
+    "p99": 6584,
+    "max": 6980
+  },
+  "end_to_end_ms": {
+    "p50": 280299,
+    "p95": 536129,
+    "p99": 566596,
+    "max": 572718
+  },
+  "window": {
+    "first_start": "2026-10-01T18:09:00.051983+00:00",
+    "last_completion": "2026-10-01T18:23:20.511607+00:00"
+  },
+  "aws": {
+    "worker_throttles": 0.0,
+    "worker_peak_concurrency": 6.0,
+    "agent_loop_throttles": 0.0,
+    "agent_loop_peak_concurrency": 0.0,
+    "api_throttles": 0.0,
+    "queue_oldest_message_s": 530.0,
+    "queue_peak_depth": 386.0,
+    "dead_letters": 0.0,
+    "sfn_executions_failed": 0.0
+  },
+  "markdown": "### Load test `36904530447-queue-7200-2000`\n\n600 of 600 rounds completed, 0 failed, 0 still pending · simulated model latency 2,000 ms per call · throughput 2,510/hour\n\n| Timing (ms) | p50 | p95 | p99 | max |\n|---|---|---|---|---|\n| Queue (start → round begins) | 273,949 | 529,769 | 560,275 | 566,358 |\n| Processing (the round) | 6,360 | 6,380 | 6,584 | 6,980 |\n| End to end | 280,299 | 536,129 | 566,596 | 572,718 |\n\nOutcomes: routed_to_support ×600\n\nAWS: worker_throttles 0, worker_peak_concurrency 6, agent_loop_throttles 0, agent_loop_peak_concurrency 0, api_throttles 0, queue_oldest_message_s 530, queue_peak_depth 386, dead_letters 0, sfn_executions_failed 0\n",
+  "path": "queue",
+  "api_probe": {
+    "ok": 145,
+    "errors": 0
+  }
+}
