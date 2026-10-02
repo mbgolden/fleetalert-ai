@@ -167,6 +167,36 @@ def _initial_alert() -> dict[str, Any]:
     }
 
 
+# What the detector itself wrote on the alert. Everything else is left by
+# an investigation, and Demo Reset drops it.
+_DETECTED_FIELDS = (
+    "alert_id",
+    "machine_id",
+    "org_id",
+    "alert_type",
+    "severity",
+    "created_at",
+    "source",
+    "detection",
+)
+
+
+def reset_alert() -> None:
+    """Demo Reset: put the detector's alert back to open, as detected.
+
+    The alert isn't seed data (the detector creates it), so reseeding never
+    touches it. It keeps what the detector found and loses what the
+    investigation added, including its trace. A no-op if the detector has
+    never raised anything.
+    """
+    alert = repositories.get_alert(AUTONOMOUS_ALERT_ID)
+    if alert is None:
+        return
+    repositories.clear_spans_for_alert(AUTONOMOUS_ALERT_ID)
+    # A whole-item put, like the seeded alerts get, so nothing lingers.
+    repositories.create_alert({**{k: alert[k] for k in _DETECTED_FIELDS if k in alert}, "status": "open"})
+
+
 def run_detector(
     start: StartInvestigation,
     *,
@@ -201,12 +231,24 @@ def run_detector(
     # (the first live run failed on exactly that). Idempotent put.
     repositories.put_machine(_monitored_machine())
     readings = generate_telemetry(profile, now)
+    detection = detect(readings)
+    metrics.emit_detector_run(detection.alert_type if detection else "normal")
+
+    if detection is None and current is not None and current.get("status") == "open":
+        # Demo Reset left the last alert open and uninvestigated, and the
+        # truck's stored readings are its evidence. A normal run keeps them,
+        # so a visitor who investigates the alert still finds the anomaly.
+        return {
+            "alert_raised": False,
+            "readings": len(readings),
+            "machine_id": MONITORED_MACHINE_ID,
+            "kept_open_alert_evidence": True,
+        }
+
     # The truck is the detector's alone; replacing its readings keeps two
     # runs a few minutes apart from interleaving two different stories.
     repositories.clear_telemetry(MONITORED_MACHINE_ID)
     repositories.put_telemetry_readings(readings)
-    detection = detect(readings)
-    metrics.emit_detector_run(detection.alert_type if detection else "normal")
 
     if detection is None:
         return {"alert_raised": False, "readings": len(readings), "machine_id": MONITORED_MACHINE_ID}
