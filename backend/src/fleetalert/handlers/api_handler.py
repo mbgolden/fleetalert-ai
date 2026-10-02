@@ -16,7 +16,7 @@ from typing import Any
 
 import boto3
 
-from fleetalert import activity, budget, repositories
+from fleetalert import activity, autonomous, budget, repositories
 from fleetalert.agent.guardrails import GuardrailViolation
 from fleetalert.agent.loop import confirm_fix, reject_fix
 from fleetalert.autonomous import run_detector
@@ -88,6 +88,8 @@ def _list_alerts_with_machine_info() -> list[dict[str, Any]]:
     # A DynamoDB scan returns items in no particular order; keep the list stable.
     alerts = sorted(repositories.list_alerts(), key=lambda a: str(a["alert_id"]))
     for alert in alerts:
+        # Internal to the confirm and reject routes; no client needs it.
+        alert.pop("step_functions_task_token", None)
         machine = repositories.get_machine(alert["machine_id"])
         if machine is not None:
             alert["machine_name"] = machine.get("name")
@@ -196,6 +198,8 @@ def _reset_demo_data() -> dict[str, Any]:
     """
     _logger.info("resetting demo data to defaults")
     reseed_demo_data()
+    # The detector's alert is created at runtime, so it isn't in the seed.
+    autonomous.reset_alert()
     return _json(200, {"outcome": "reset"})
 
 

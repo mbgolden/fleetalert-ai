@@ -230,3 +230,94 @@ def test_the_detector_creates_its_truck_if_seeding_never_ran(dynamodb_tables: No
 
     machine = get_machine(MONITORED_MACHINE_ID)
     assert machine is not None and machine["name"] == "Truck 31 - Engine"
+
+
+def test_demo_reset_reopens_the_detectors_alert_as_detected(
+    dynamodb_tables: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Reset only restored the seeded alerts, so the detector's alert kept
+    its old status and trace."""
+    from fleetalert.repositories import get_spans_for_alert
+
+    reseed_demo_data()
+    run_detector(_Starts(), trigger="schedule", profile="coolant_leak", now=NOW)
+    run_investigation(
+        AUTONOMOUS_ALERT_ID,
+        FakeAnthropicClient(
+            [
+                response(
+                    tool_use_block(
+                        "propose_fix",
+                        {"fix_id": "restart_sensor", "confidence": 0.8, "description": "Restart it."},
+                        "t1",
+                    )
+                )
+            ]
+        ),
+        entry_point="autonomous",
+    )
+    update_alert(AUTONOMOUS_ALERT_ID, status="resolved", step_functions_task_token="sfn-token")
+    detected = (get_alert(AUTONOMOUS_ALERT_ID) or {})["detection"]
+    assert get_spans_for_alert(AUTONOMOUS_ALERT_ID)
+
+    resp = api_handler.handler({"routeKey": "POST /demo/reset"}, None)
+
+    assert resp["statusCode"] == 200
+    alert = get_alert(AUTONOMOUS_ALERT_ID)
+    assert alert is not None
+    assert alert["status"] == "open"
+    assert alert["detection"] == detected
+    assert alert["source"] == "autonomous" and alert["alert_type"] == "coolant_temp_spike"
+    for leftover in ("proposed_fix", "confidence", "confirmation_token", "step_functions_task_token"):
+        assert leftover not in alert
+    assert get_spans_for_alert(AUTONOMOUS_ALERT_ID) == []
+    assert len(_all_readings()) == 19  # its evidence is still there
+
+
+def test_demo_reset_before_any_detection_creates_no_alert(dynamodb_tables: None) -> None:
+    reseed_demo_data()
+
+    resp = api_handler.handler({"routeKey": "POST /demo/reset"}, None)
+
+    assert resp["statusCode"] == 200
+    assert get_alert(AUTONOMOUS_ALERT_ID) is None
+
+
+def test_a_normal_run_keeps_the_evidence_of_an_open_alert(dynamodb_tables: None) -> None:
+    reseed_demo_data()
+    run_detector(_Starts(), trigger="schedule", profile="coolant_leak", now=NOW)
+    autonomous.reset_alert()
+    before = _all_readings()
+    starts = _Starts()
+
+    result = run_detector(starts, trigger="schedule", profile="normal", now=NOW + timedelta(hours=4))
+
+    assert result["alert_raised"] is False and result["kept_open_alert_evidence"] is True
+    assert starts.calls == []
+    assert _all_readings() == before
+
+
+def test_a_new_detection_replaces_an_open_alert(dynamodb_tables: None) -> None:
+    reseed_demo_data()
+    run_detector(_Starts(), trigger="schedule", profile="coolant_leak", now=NOW)
+    autonomous.reset_alert()
+    starts = _Starts()
+
+    result = run_detector(starts, trigger="schedule", profile="oil_pressure_decline", now=NOW + timedelta(hours=4))
+
+    assert result["started"] is True
+    alert = get_alert(AUTONOMOUS_ALERT_ID)
+    assert alert is not None and alert["status"] == "queued"
+    assert alert["alert_type"] == "oil_pressure_warning"
+
+
+def test_the_alert_list_never_exposes_the_task_token(dynamodb_tables: None) -> None:
+    reseed_demo_data()
+    update_alert("ALERT-1001", status="awaiting_confirmation", step_functions_task_token="sfn-token")
+
+    resp = api_handler.handler({"routeKey": "GET /demo/alerts"}, None)
+
+    listed = {a["alert_id"]: a for a in json.loads(resp["body"])["alerts"]}
+    assert listed["ALERT-1001"]["status"] == "awaiting_confirmation"
+    assert all("step_functions_task_token" not in a for a in listed.values())
+
