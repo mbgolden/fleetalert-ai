@@ -53,6 +53,8 @@ jobs:
       - uses: astral-sh/setup-uv@v3
       - name: Build Lambda deployment package
         run: bash infra/scripts/build_lambda_package.sh
+      - name: Build MCP server package (fleetalert-mcp at a pinned tag, ADR-0025)
+        run: bash infra/scripts/build_mcp_package.sh
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}

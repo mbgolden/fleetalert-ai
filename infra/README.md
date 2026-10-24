@@ -18,3 +18,19 @@ scaffolding).
 - `frontend/` — S3 + CloudFront
 - `observability/` — CloudWatch dashboards + alarms
 - `iam/` — one least-privilege role per function
+
+## MCP server tokens (ADR-0025)
+
+Terraform creates `fleetalert-ai-demo-mcp-tokens` empty. Set its value by
+hand (console "Plaintext", or `aws secretsmanager put-secret-value`) as JSON:
+
+```json
+{"tokens": "visitor:read_only:<32+ chars>,ops:executes_action:<32+ chars>",
+ "state_key": "<64 hex chars>"}
+```
+
+Generate the secrets with `openssl rand -hex 24` for each token and
+`python -c "import secrets; print(secrets.token_hex(32))"` for `state_key`.
+The visitor token is meant to be published; the ops token is not. The
+Lambda reads the secret once per container, so a change takes effect on
+the next cold start (or redeploy the function).
