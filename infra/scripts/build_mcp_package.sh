@@ -15,7 +15,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../../backend"
 
 UV="$(command -v uv || echo "$HOME/.local/bin/uv")"
-REF="${FLEETALERT_MCP_REF:-v0.2.0}"
+REF="${FLEETALERT_MCP_REF:-v0.3.0}"
 
 rm -rf build/mcp_package
 mkdir -p build/mcp_package

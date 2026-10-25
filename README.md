@@ -104,6 +104,16 @@ claude mcp add --transport http fleetalert https://xx8eypbgv2.execute-api.us-eas
 
 That token is the published read-only visitor key (it is meant to be
 shared; rate limits and the daily cost guard bound what it can do).
+
+Claude Desktop and claude.ai need no token: add a custom connector with the
+URL `https://xx8eypbgv2.execute-api.us-east-1.amazonaws.com/mcp` and the
+server's own consent page signs it in as the same read-only visitor (an
+operator can paste their key there to get their tier). The MCP server is its
+own OAuth 2.1 authorization server, with no database behind it
+(fleetalert-mcp ADR-0007; turned on here by
+[ADR-0027](docs/decisions/ADR-0027-oauth-on-the-hosted-mcp-server.md)).
+An investigation started from either client shows up in the Activity feed
+tagged `mcp`.
 Health: [https://xx8eypbgv2.execute-api.us-east-1.amazonaws.com/healthz](https://xx8eypbgv2.execute-api.us-east-1.amazonaws.com/healthz). The server, its tiers and the elicitation flow are described
 in the [fleetalert-mcp](https://github.com/mbgolden/fleetalert-mcp) repo and
 [ADR-0025](docs/decisions/ADR-0025-host-the-mcp-server-as-a-lambda.md).
@@ -196,3 +206,4 @@ A merge to main applies Terraform and deploys the frontend
 | [0024](docs/decisions/ADR-0024-queue-backpressure.md) | Queue-based backpressure for machine-generated alerts |
 | [0025](docs/decisions/ADR-0025-host-the-mcp-server-as-a-lambda.md) | Host the MCP server as a Lambda in the demo environment |
 | [0026](docs/decisions/ADR-0026-mcp-as-an-entry-point.md) | MCP as a fourth entry point, declared by an allowlisted header |
+| [0027](docs/decisions/ADR-0027-oauth-on-the-hosted-mcp-server.md) | Turn on OAuth for the hosted MCP server, so Claude Desktop can connect |
