@@ -25,6 +25,7 @@ to bound cost and abuse on a public site.
 | **Structured traces** | Every model call, capability call, guardrail decision and human action is a span with input, output, latency, status and cost. They're grouped one trace per round and shown live in the UI. |
 | **Evals** | Golden scenarios graded deterministically from the spans, 3 trials each against real Claude. They gate PRs that change agent behaviour, and recorded runs replay for free on every PR. The page linked above shows the results and what they caught. |
 | **Load tested, with backpressure** | The live pipeline was load-tested with a scripted model ([ADR-0023](docs/decisions/ADR-0023-load-testing-without-a-model.md)). At 7,200 investigations an hour it lost 16% of the work and took its own API down. Machine-generated alerts now go through an SQS queue and a concurrency-capped worker ([ADR-0024](docs/decisions/ADR-0024-queue-backpressure.md)). The same load passes through with an 84 ms median wait, and 36,000 an hour queues, drains in 2.4 minutes and loses nothing. |
+| **An MCP server, hosted** | [fleetalert-mcp](https://github.com/mbgolden/fleetalert-mcp) exposes this API to Claude Code and Claude Desktop with the same three safety tiers, human approval through elicitation before a fix is confirmed, bearer tokens and rate limits. It runs as a Lambda in this environment ([ADR-0025](docs/decisions/ADR-0025-host-the-mcp-server-as-a-lambda.md)); see "Connect your own Claude" below. |
 | **Observability and cost** | Every span also becomes a CloudWatch metric. A dashboard, four alarms, and a daily cost guard (50 rounds or $1.25 a day) sit in front of the Anthropic workspace limit. |
 
 ## How an investigation flows
@@ -89,6 +90,22 @@ at 865 and drained 2.4 minutes after the burst. All 3,000 completed. The
 test also found a client retry that re-ran the whole load three times, and
 a new connection on every DynamoDB call that made each round over five
 times slower than it needed to be. Both are in ADR-0023.
+
+## Connect your own Claude
+
+The demo is also an MCP server. With a read-only visitor token, Claude Code
+can list the alerts, summarise a round's trace and check the daily budget;
+nothing it does spends money or changes state.
+
+```bash
+claude mcp add --transport http fleetalert <mcp_url> --header "Authorization: Bearer <visitor token>"
+```
+
+`<mcp_url>` is the `mcp_url` Terraform output (an API Gateway endpoint ending
+in `/mcp`) and the visitor token is published alongside it once the first
+deploy is live. The server, its tiers and the elicitation flow are described
+in the [fleetalert-mcp](https://github.com/mbgolden/fleetalert-mcp) repo and
+[ADR-0025](docs/decisions/ADR-0025-host-the-mcp-server-as-a-lambda.md).
 
 ## Stack
 
@@ -176,3 +193,4 @@ A merge to main applies Terraform and deploys the frontend
 | [0022](docs/decisions/ADR-0022-activity-feed-and-end-state-metric.md) | A cross-alert activity feed and an end-state metric |
 | [0023](docs/decisions/ADR-0023-load-testing-without-a-model.md) | Load testing the live pipeline, without calling a model |
 | [0024](docs/decisions/ADR-0024-queue-backpressure.md) | Queue-based backpressure for machine-generated alerts |
+| [0025](docs/decisions/ADR-0025-host-the-mcp-server-as-a-lambda.md) | Host the MCP server as a Lambda in the demo environment |
