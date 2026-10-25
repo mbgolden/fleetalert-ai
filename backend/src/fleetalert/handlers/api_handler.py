@@ -23,6 +23,7 @@ from fleetalert.autonomous import run_detector
 from fleetalert.email_intake import deliver_inbound_email
 from fleetalert.logging_config import alert_logger, configure_logging
 from fleetalert.seed_data import reseed_demo_data
+from fleetalert.tracing import EntryPoint
 from fleetalert.workflow import enqueue_investigation, start_investigation
 
 configure_logging()
@@ -40,7 +41,7 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
             return _json(200, {"alerts": _list_alerts_with_machine_info()})
 
         if route_key == "POST /demo/alerts/{alert_id}/investigate":
-            return _start_investigation(path_params["alert_id"])
+            return _start_investigation(path_params["alert_id"], _entry_point(event))
 
         if route_key == "GET /demo/alerts/{alert_id}/status":
             return _get_status(path_params["alert_id"])
@@ -97,15 +98,30 @@ def _list_alerts_with_machine_info() -> list[dict[str, Any]]:
     return alerts
 
 
-def _start_investigation(alert_id: str) -> dict[str, Any]:
+# Callers that are not the web UI say so with this header. Only values in
+# the allowlist are honoured; anything else is the web path (ADR-0026).
+ENTRY_POINT_HEADER = "x-fleetalert-entry-point"
+_HEADER_ENTRY_POINTS = {EntryPoint.MCP.value: EntryPoint.MCP}
+
+
+def _entry_point(event: dict[str, Any]) -> EntryPoint:
+    headers = event.get("headers") or {}
+    declared = str(headers.get(ENTRY_POINT_HEADER, "")).strip().lower()
+    return _HEADER_ENTRY_POINTS.get(declared, EntryPoint.WEB)
+
+
+def _start_investigation(alert_id: str, entry_point: EntryPoint = EntryPoint.WEB) -> dict[str, Any]:
     log = alert_logger(__name__, alert_id)
     if budget.usage()["exhausted"]:
         # A friendly early answer; the loop enforces the cap regardless.
         log.info("investigation refused: daily budget exhausted")
         return _json(429, {"error": budget.exhausted_message()})
-    start_investigation(alert_id, "web")
-    log.info("investigation triggered via API")
-    return _json(202, {"alert_id": alert_id, "status": "investigation_started"})
+    start_investigation(alert_id, str(entry_point))
+    log.info("investigation triggered via API (entry_point=%s)", entry_point)
+    return _json(
+        202,
+        {"alert_id": alert_id, "status": "investigation_started", "entry_point": str(entry_point)},
+    )
 
 
 def _detector_status(result: dict[str, Any]) -> int:
