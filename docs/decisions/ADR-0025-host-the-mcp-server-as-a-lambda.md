@@ -24,7 +24,7 @@ run, explain and pay for), or a Lambda in this account.
   OAuth protected-resource metadata, `/healthz`, `/metrics`) and needs no
   CORS; MCP clients are not browsers.
 - **The code is pinned by git tag, not vendored.** A build script installs
-  `fleetalert-mcp` from GitHub at `FLEETALERT_MCP_REF` (today `v0.2.0`)
+  `fleetalert-mcp` from GitHub at `FLEETALERT_MCP_REF` (`v0.2.0` at the time; ADR-0027 took `v0.3.0`)
   into `backend/build/mcp_package`, which the Lambda module zips, exactly
   like the backend package. Bumping the tag is how the demo takes a new
   server release; the two repos stay separately versioned.

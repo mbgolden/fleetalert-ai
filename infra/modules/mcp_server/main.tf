@@ -39,6 +39,10 @@ module "lambda" {
     FLEETALERT_MCP_API_BASE_URL     = var.fleetalert_api_endpoint
     FLEETALERT_MCP_CALLS_PER_MINUTE = tostring(var.calls_per_minute)
     FLEETALERT_MCP_ACTIONS_PER_HOUR = tostring(var.actions_per_hour)
+    # The server is its own OAuth 2.1 authorization server for Claude Desktop
+    # and claude.ai (fleetalert-mcp ADR-0007, here ADR-0027). It needs only
+    # the state_key already in the secret.
+    FLEETALERT_MCP_OAUTH_ENABLED = "true"
   }
 
   policy_statements = [
