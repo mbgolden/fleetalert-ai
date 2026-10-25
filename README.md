@@ -98,12 +98,13 @@ can list the alerts, summarise a round's trace and check the daily budget;
 nothing it does spends money or changes state.
 
 ```bash
-claude mcp add --transport http fleetalert <mcp_url> --header "Authorization: Bearer <visitor token>"
+claude mcp add --transport http fleetalert https://xx8eypbgv2.execute-api.us-east-1.amazonaws.com/mcp \
+  --header "Authorization: Bearer d2067598688a6ca159dec88d3b0911805d09a2940513e869"
 ```
 
-`<mcp_url>` is the `mcp_url` Terraform output (an API Gateway endpoint ending
-in `/mcp`) and the visitor token is published alongside it once the first
-deploy is live. The server, its tiers and the elicitation flow are described
+That token is the published read-only visitor key (it is meant to be
+shared; rate limits and the daily cost guard bound what it can do).
+Health: [https://xx8eypbgv2.execute-api.us-east-1.amazonaws.com/healthz](https://xx8eypbgv2.execute-api.us-east-1.amazonaws.com/healthz). The server, its tiers and the elicitation flow are described
 in the [fleetalert-mcp](https://github.com/mbgolden/fleetalert-mcp) repo and
 [ADR-0025](docs/decisions/ADR-0025-host-the-mcp-server-as-a-lambda.md).
 
