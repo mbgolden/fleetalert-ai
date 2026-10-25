@@ -30,7 +30,8 @@ hand (console "Plaintext", or `aws secretsmanager put-secret-value`) as JSON:
 ```
 
 Generate the secrets with `openssl rand -hex 24` for each token and
-`python -c "import secrets; print(secrets.token_hex(32))"` for `state_key`.
+`openssl rand -hex 32` for `state_key` (any 32+ bytes of randomness works;
+`python3 -c "import secrets; print(secrets.token_hex(32))"` is equivalent).
 The visitor token is meant to be published; the ops token is not. The
 Lambda reads the secret once per container, so a change takes effect on
 the next cold start (or redeploy the function).
