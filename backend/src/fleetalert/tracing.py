@@ -57,6 +57,7 @@ class EntryPoint(StrEnum):
     EMAIL = "email"
     AUTONOMOUS = "autonomous"
     LOAD_TEST = "loadtest"
+    MCP = "mcp"  # started by an MCP client through fleetalert-mcp (ADR-0026)
 
 
 def new_span_id() -> str:

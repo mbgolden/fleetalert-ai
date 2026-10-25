@@ -429,6 +429,10 @@ button.reset-button:hover:not(:disabled) {
   color: #2dd4bf;
 }
 
+.entry-mcp {
+  color: #f5a524;
+}
+
 .tier-chip {
   color: var(--text-dim);
   text-transform: none;

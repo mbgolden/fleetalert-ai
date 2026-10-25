@@ -88,6 +88,48 @@ def test_investigate_route_starts_execution(
     assert json.loads(call["input"]) == {"alert_id": "ALERT-3", "entry_point": "web"}
 
 
+def test_investigate_route_honours_the_mcp_entry_point_header(
+    dynamodb_tables: None, fake_sfn: _FakeStepFunctionsClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An MCP client declares itself with a header; the round is tagged mcp so
+    the trace viewer and Activity feed show a fourth way in (ADR-0026)."""
+    _seed_alert("ALERT-5")
+    monkeypatch.setenv("STATE_MACHINE_ARN", "arn:aws:states:us-east-1:123456789012:stateMachine:demo")
+
+    resp = api_handler.handler(
+        {
+            "routeKey": "POST /demo/alerts/{alert_id}/investigate",
+            "pathParameters": {"alert_id": "ALERT-5"},
+            "headers": {"x-fleetalert-entry-point": "MCP"},
+        },
+        None,
+    )
+
+    assert resp["statusCode"] == 202
+    assert json.loads(resp["body"])["entry_point"] == "mcp"
+    assert json.loads(fake_sfn.started_executions[-1]["input"]) == {"alert_id": "ALERT-5", "entry_point": "mcp"}
+
+
+def test_investigate_route_ignores_unknown_entry_point_headers(
+    dynamodb_tables: None, fake_sfn: _FakeStepFunctionsClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Only allowlisted values count: a caller cannot invent an entry point."""
+    _seed_alert("ALERT-6")
+    monkeypatch.setenv("STATE_MACHINE_ARN", "arn:aws:states:us-east-1:123456789012:stateMachine:demo")
+
+    resp = api_handler.handler(
+        {
+            "routeKey": "POST /demo/alerts/{alert_id}/investigate",
+            "pathParameters": {"alert_id": "ALERT-6"},
+            "headers": {"x-fleetalert-entry-point": "loadtest"},
+        },
+        None,
+    )
+
+    assert resp["statusCode"] == 202
+    assert json.loads(fake_sfn.started_executions[-1]["input"]) == {"alert_id": "ALERT-6", "entry_point": "web"}
+
+
 def test_get_status_route(dynamodb_tables: None) -> None:
     _seed_alert(
         "ALERT-4",
